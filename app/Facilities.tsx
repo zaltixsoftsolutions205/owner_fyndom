@@ -667,10 +667,12 @@ const FacilitiesScreen = () => {
         text2: "Your hostel facilities have been updated.",
       });
       dispatch(clearSuccess());
-      // Don't navigate automatically, let user decide
-      // router.push("/Summary");
+      // Navigate to summary page after successful update
+      setTimeout(() => {
+        router.push("/Summary");
+      }, 1500);
     }
-  }, [error, success, dispatch]);
+  }, [error, success, dispatch, router]);
 
   const toggleFacility = (facilityId: string, category: string) => {
     if (category === "Sharing Type") {
@@ -770,6 +772,8 @@ const FacilitiesScreen = () => {
           text1: "Success ✅",
           text2: "Facilities updated successfully!",
         });
+        
+        // Navigation to summary page will be handled by the success useEffect
       }
     } catch (error: any) {
       console.error("Submission error:", error);
@@ -1068,7 +1072,7 @@ const FacilitiesScreen = () => {
           </View>
         )}
 
-        {/* Save Button */}
+        {/* Update & Next Button */}
         <View style={styles.bottomButtonsRow}>
           <TouchableOpacity
             style={[styles.saveButton, (getSelectedCount() === 0 && !foodMenu.trim()) && styles.saveButtonDisabled]}
@@ -1079,10 +1083,11 @@ const FacilitiesScreen = () => {
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <>
-                <Icon name="content-save" size={20} color="#fff" />
+                <Icon name="check-circle" size={20} color="#fff" />
                 <Text style={styles.saveButtonText}>
-                  {facilities ? "Update Facilities" : "Save Facilities"}
+                  Update & Next
                 </Text>
+                <Icon name="arrow-right" size={20} color="#fff" />
               </>
             )}
           </TouchableOpacity>
