@@ -15,6 +15,7 @@
 //   FlatList,
 //   ActivityIndicator,
 //   RefreshControl,
+//   Image,
 // } from "react-native";
 // import { LinearGradient } from "expo-linear-gradient";
 // import { useAppSelector, useAppDispatch } from "../hooks/hooks";
@@ -42,6 +43,24 @@
 // interface PricingSummaryResponse {
 //   success: boolean;
 //   data: PricingData[];
+// }
+
+// // Bank Details Interface
+// interface BankDetails {
+//   bankName: string;
+//   accountNumber: string;
+//   ifscCode: string;
+//   accountHolderName: string;
+//   branchName?: string;
+//   accountType?: string;
+// }
+
+// // User Profile Interface
+// interface UserProfile {
+//   name: string;
+//   email?: string;
+//   avatar?: string;
+//   phone?: string;
 // }
 
 // const initialHostel = {
@@ -75,6 +94,9 @@
 //   const [pricingLoading, setPricingLoading] = useState(false);
 //   const [pricingError, setPricingError] = useState<string | null>(null);
 //   const [refreshing, setRefreshing] = useState(false);
+//   const [bankDetails, setBankDetails] = useState<BankDetails | null>(null);
+//   const [bankDetailsLoading, setBankDetailsLoading] = useState(false);
+//   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
 //   const { user, fullName } = useAppSelector((state) => state.auth);
 
@@ -97,12 +119,75 @@
 //   useEffect(() => {
 //     dispatch(getHostelPhotos());
 //     dispatch(getFacilities());
+//     fetchUserProfile();
 //   }, []);
 
 //   // Load all initial data
 //   const loadInitialData = () => {
 //     dispatch(getAllRooms());
 //     fetchPricingData();
+//     fetchBankDetails();
+//     fetchUserProfile();
+//   };
+
+//   // Fetch user profile data
+//   const fetchUserProfile = async () => {
+//     try {
+//       // Try to fetch from API first
+//       const response = await ApiClient.get<{ success: boolean; data: UserProfile }>(
+//         "/hostel-owner/profile"
+//       );
+
+//       if (response.success && response.data) {
+//         setUserProfile(response.data);
+//       } else {
+//         // Fallback to auth data
+//         setUserProfile({
+//           name: user?.fullName || "Hostel Owner",
+//           email: user?.email,
+//           phone: user?.phone,
+//           avatar: user?.avatar // Will be null initially
+//         });
+//       }
+//     } catch (error) {
+//       console.error("Error fetching user profile:", error);
+//       // Fallback to auth data
+//       setUserProfile({
+//         name: user?.fullName || "Hostel Owner",
+//         email: user?.email,
+//         phone: user?.phone,
+//         avatar: user?.avatar
+//       });
+//     }
+//   };
+
+//   // Handle profile image update
+//   const handleProfileImageUpdate = async (imageUri: string) => {
+//     try {
+//       // Upload image to server
+//       const formData = new FormData();
+//       formData.append('avatar', {
+//         uri: imageUri,
+//         type: 'image/jpeg',
+//         name: 'profile.jpg'
+//       } as any);
+
+//       const response = await ApiClient.post("/user/upload-avatar", formData, {
+//         headers: {
+//           'Content-Type': 'multipart/form-data',
+//         },
+//       });
+
+//       if (response.success) {
+//         // Update local state
+//         setUserProfile(prev => prev ? { ...prev, avatar: response.data.avatarUrl } : null);
+//         // Show success message
+//         alert("Profile picture updated successfully!");
+//       }
+//     } catch (error) {
+//       console.error("Error uploading profile image:", error);
+//       alert("Failed to upload profile picture");
+//     }
 //   };
 
 //   // Fetch pricing data from API
@@ -124,6 +209,27 @@
 //     }
 //   };
 
+//   // Fetch bank details from API
+//   const fetchBankDetails = async () => {
+//     try {
+//       setBankDetailsLoading(true);
+
+//       // Replace with your actual API endpoint
+//       const response = await ApiClient.get<{ success: boolean; data: BankDetails }>("/bank/details");
+
+//       if (response.success && response.data) {
+//         setBankDetails(response.data);
+//       } else {
+//         setBankDetails(null);
+//       }
+//     } catch (error: any) {
+//       console.error("Failed to fetch bank details:", error);
+//       setBankDetails(null);
+//     } finally {
+//       setBankDetailsLoading(false);
+//     }
+//   };
+
 //   // Handle pull-to-refresh
 //   const onRefresh = useCallback(async () => {
 //     setRefreshing(true);
@@ -133,8 +239,10 @@
 //       await Promise.all([
 //         dispatch(getAllRooms()),
 //         fetchPricingData(),
+//         fetchBankDetails(),
 //         dispatch(getHostelPhotos()),
-//         dispatch(getFacilities())
+//         dispatch(getFacilities()),
+//         fetchUserProfile()
 //       ]);
 //     } catch (error) {
 //       console.error("Refresh error:", error);
@@ -199,10 +307,10 @@
 
 //   // Render pricing card
 //   const renderPricingCard = () => (
-//     <TouchableOpacity 
-//       style={styles.pricingCard} 
+//     <TouchableOpacity
+//       style={styles.pricingCard}
 //       onPress={() => {
-//         try { recordRoute('/HostelDetails'); } catch (e) {}
+//         try { recordRoute('/HostelDetails'); } catch (e) { }
 //         router.push("/Pricing");
 //       }}
 //       activeOpacity={0.8}
@@ -233,7 +341,7 @@
 //         <View style={styles.pricingErrorContainer}>
 //           <Icon name="alert-circle-outline" size={20} color="#FF6B6B" />
 //           <Text style={styles.pricingErrorText}>{pricingError}</Text>
-//           <TouchableOpacity 
+//           <TouchableOpacity
 //             style={styles.retryButton}
 //             onPress={fetchPricingData}
 //           >
@@ -244,10 +352,10 @@
 //         <View style={styles.pricingEmptyContainer}>
 //           <Icon name="cash-remove" size={40} color="#CCCCCC" />
 //           <Text style={styles.pricingEmptyText}>No pricing set yet</Text>
-//           <TouchableOpacity 
+//           <TouchableOpacity
 //             style={styles.addPricingButton}
 //             onPress={() => {
-//               try { recordRoute('/HostelDetails'); } catch (e) {}
+//               try { recordRoute('/HostelDetails'); } catch (e) { }
 //               router.push("/Pricing");
 //             }}
 //           >
@@ -265,8 +373,8 @@
 
 //           {/* Table Rows */}
 //           {Object.entries(pricingGroups).map(([type, prices], index) => (
-//             <View 
-//               key={type} 
+//             <View
+//               key={type}
 //               style={[
 //                 styles.pricingTableRow,
 //                 index % 2 === 0 && styles.pricingTableRowEven
@@ -296,6 +404,16 @@
 //     </TouchableOpacity>
 //   );
 
+//   // Get initials from name for avatar placeholder
+//   const getInitials = (name: string) => {
+//     return name
+//       .split(' ')
+//       .map(part => part[0])
+//       .join('')
+//       .toUpperCase()
+//       .slice(0, 2);
+//   };
+
 //   return (
 //     <SafeAreaView style={styles.wrapper}>
 //       <StatusBar barStyle="light-content" backgroundColor={FOREST_GREEN} />
@@ -310,31 +428,60 @@
 //           <Text style={styles.welcomeText}>Welcome Back</Text>
 //           <Text style={styles.ownerName}>{user?.fullName}</Text>
 //         </View>
-//         <TouchableOpacity 
-//           style={styles.settingsButton}
-//           onPress={() => {
-//             try { recordRoute('/HostelDetails'); } catch (e) {}
-//             router.push("/tabs/Settings");
-//           }}
-//         >
-//           <View style={styles.settingsIconWrap}>
-//             <Ionicons name="settings-sharp" size={20} color="#fff" />
-//           </View>
-//         </TouchableOpacity>
+
+//         {/* Header Right Icons - Profile and Settings */}
+//         <View style={styles.headerRightIcons}>
+//           {/* Profile Icon - Large and Full Circle */}
+//           <TouchableOpacity
+//             style={styles.profileButton}
+//             onPress={() => {
+//               try { recordRoute('/HostelDetails'); } catch (e) { }
+//               router.push("/Profile");
+//             }}
+//           >
+//             <View style={styles.profileIconWrap}>
+//               {userProfile?.avatar ? (
+//                 <Image
+//                   source={{ uri: userProfile.avatar }}
+//                   style={styles.profileAvatar}
+//                   resizeMode="cover"
+//                 />
+//               ) : (
+//                 <View style={styles.profilePlaceholder}>
+//                   <Text style={styles.profileInitials}>
+//                     {userProfile?.name ? getInitials(userProfile.name) : "HO"}
+//                   </Text>
+//                 </View>
+//               )}
+//               {/* Online indicator */}
+//               <View style={styles.onlineIndicator} />
+//             </View>
+//           </TouchableOpacity>
+
+//           {/* Settings Icon - Smaller */}
+//           <TouchableOpacity
+//             style={styles.settingsButton}
+//             onPress={() => {
+//               try { recordRoute('/HostelDetails'); } catch (e) { }
+//               router.push("/tabs/Settings");
+//             }}
+//           >
+//             <View style={styles.settingsIconWrap}>
+//               <Ionicons name="settings-sharp" size={18} color="#fff" />
+//             </View>
+//           </TouchableOpacity>
+//         </View>
 //       </LinearGradient>
 
 //       {/* Perfect spacing */}
 //       <View style={{ height: 20 }} />
 
-//       <ScrollView 
-//         style={{ flex: 1 }} 
+//       <ScrollView
+//         style={{ flex: 1 }}
 //         contentContainerStyle={{ paddingBottom: 40 }}
 //         refreshControl={refreshControl}
 //         showsVerticalScrollIndicator={true}
 //       >
-
-
-
 //         {/* Stat Cards - Forest Green */}
 //         <View style={styles.statsRow}>
 //           <TouchableOpacity style={[styles.statCard, { borderColor: FOREST_GREEN }]} activeOpacity={0.9}>
@@ -350,10 +497,10 @@
 //         </View>
 
 //         {/* Upcoming Bookings Card */}
-//         <TouchableOpacity 
+//         <TouchableOpacity
 //           style={styles.bookingsCard}
 //           onPress={() => {
-//             try { recordRoute('/HostelDetails'); } catch (e) {}
+//             try { recordRoute('/HostelDetails'); } catch (e) { }
 //             router.push("/tabs/Bookings");
 //           }}
 //           activeOpacity={0.8}
@@ -365,7 +512,6 @@
 //             <Text style={styles.bookingsTitle}>Upcoming Bookings</Text>
 //             {noBookings ? (
 //               <>
-//                 {/* <Text style={styles.bookingsSub}>No bookings this week</Text> */}
 //                 <Text style={styles.bookingsSubnote}>New bookings will appear here</Text>
 //               </>
 //             ) : (
@@ -390,7 +536,7 @@
 //               <TouchableOpacity
 //                 style={styles.roomCard}
 //                 onPress={() => {
-//                   try { recordRoute('/HostelDetails'); } catch (e) {}
+//                   try { recordRoute('/HostelDetails'); } catch (e) { }
 //                   router.push("/RoomDetails");
 //                 }}
 //                 activeOpacity={0.82}
@@ -417,7 +563,7 @@
 //           <TouchableOpacity
 //             style={styles.seeAllButton}
 //             onPress={() => {
-//               try { recordRoute('/HostelDetails'); } catch (e) {}
+//               try { recordRoute('/HostelDetails'); } catch (e) { }
 //               router.push("/tabs/allrooms");
 //             }}
 //             activeOpacity={0.8}
@@ -432,7 +578,7 @@
 
 //         {/* Facilities Card */}
 //         <TouchableOpacity style={styles.infoCard} onPress={() => {
-//           try { recordRoute('/HostelDetails'); } catch (e) {}
+//           try { recordRoute('/HostelDetails'); } catch (e) { }
 //           router.push("/Facilities");
 //         }}>
 //           <View style={styles.iconCircleYellow}>
@@ -443,13 +589,13 @@
 //             <Text style={styles.cardValue} numberOfLines={1}>
 //               {facilities
 //                 ? [
-//                     ...(facilities.bathroomTypes || []),
-//                     ...(facilities.essentials || []),
-//                     ...(facilities.foodServices || []),
-//                     ...(facilities.roomSharingTypes?.map(
-//                       (type) => `${type.roomType} (${type.sharingType})`
-//                     ) || []),
-//                   ].join(", ")
+//                   ...(facilities.bathroomTypes || []),
+//                   ...(facilities.essentials || []),
+//                   ...(facilities.foodServices || []),
+//                   ...(facilities.roomSharingTypes?.map(
+//                     (type) => `${type.roomType} (${type.sharingType})`
+//                   ) || []),
+//                 ].join(", ")
 //                 : "Loading..."
 //               }
 //             </Text>
@@ -459,7 +605,7 @@
 
 //         {/* Media Card */}
 //         <TouchableOpacity style={styles.infoCard} onPress={() => {
-//           try { recordRoute('/HostelDetails'); } catch (e) {}
+//           try { recordRoute('/HostelDetails'); } catch (e) { }
 //           router.push("/UploadMedia");
 //         }}>
 //           <View style={styles.iconCircle}>
@@ -470,6 +616,41 @@
 //             <Text style={styles.cardValue} numberOfLines={1}>
 //               {photos.length} images/videos
 //             </Text>
+//           </View>
+//           <Icon name="chevron-right" size={24} color="#BDBDBD" />
+//         </TouchableOpacity>
+
+//         {/* Bank Details Card - ADDED ABOVE LOCATION */}
+//         <TouchableOpacity style={styles.infoCard} onPress={() => {
+//           try { recordRoute('/HostelDetails'); } catch (e) { }
+//           router.push("/BankDetailsPage");
+//         }}>
+//           <View style={styles.iconCircleBank}>
+//             <Icon name="bank" size={26} color="#2C3E50" />
+//           </View>
+//           <View style={{ flex: 1 }}>
+//             <Text style={styles.cardLabel}>Bank Details</Text>
+//             {bankDetailsLoading ? (
+//               <ActivityIndicator size="small" color={FOREST_GREEN} />
+//             ) : bankDetails ? (
+//               <View>
+//                 <Text style={styles.cardValue} numberOfLines={1}>
+//                   {bankDetails.bankName} • {maskAccountNumber(bankDetails.accountNumber)}
+//                 </Text>
+//                 <Text style={styles.bankSubText}>
+//                   {bankDetails.accountHolderName} • {bankDetails.ifscCode}
+//                 </Text>
+//               </View>
+//             ) : (
+//               <View>
+//                 <Text style={styles.cardValue} numberOfLines={1}>
+//                   No bank details added
+//                 </Text>
+//                 <Text style={styles.bankSubText}>
+//                   Tap to add your bank account information
+//                 </Text>
+//               </View>
+//             )}
 //           </View>
 //           <Icon name="chevron-right" size={24} color="#BDBDBD" />
 //         </TouchableOpacity>
@@ -492,6 +673,13 @@
 //   );
 // }
 
+// // Helper function to mask account number
+// const maskAccountNumber = (accountNumber: string): string => {
+//   if (!accountNumber || accountNumber.length <= 4) return accountNumber;
+//   const lastFour = accountNumber.slice(-4);
+//   return `••••${lastFour}`;
+// };
+
 // const styles = StyleSheet.create({
 //   wrapper: {
 //     flex: 1,
@@ -511,6 +699,83 @@
 //   headerContent: {
 //     flex: 1,
 //   },
+//   // Header Right Icons Container
+//   headerRightIcons: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     gap: 16,
+//   },
+//   profileButton: {
+//     padding: 2,
+//   },
+//   settingsButton: {
+//     padding: 2,
+//   },
+//   // Large Profile Icon - Covers entire circle
+//   profileIconWrap: {
+//     width: 60,
+//     height: 60,
+//     borderRadius: 30,
+//     justifyContent: "center",
+//     alignItems: "center",
+//     borderWidth: 3,
+//     borderColor: "rgba(255, 255, 255, 0.6)",
+//     elevation: 10,
+//     shadowColor: "#000",
+//     shadowOffset: { width: 0, height: 4 },
+//     shadowOpacity: 0.3,
+//     shadowRadius: 8,
+//     position: "relative",
+//     overflow: "hidden",
+//     backgroundColor: "rgba(255, 255, 255, 0.1)",
+//   },
+//   // Smaller Settings Icon
+//   settingsIconWrap: {
+//     backgroundColor: "rgba(255, 255, 255, 0.15)",
+//     width: 40,
+//     height: 40,
+//     borderRadius: 20,
+//     justifyContent: "center",
+//     alignItems: "center",
+//     borderWidth: 1.5,
+//     borderColor: "rgba(255, 255, 255, 0.3)",
+//     elevation: 4,
+//     shadowColor: "#000",
+//     shadowOffset: { width: 0, height: 2 },
+//     shadowOpacity: 0.2,
+//     shadowRadius: 4,
+//   },
+//   profileAvatar: {
+//     width: "100%",
+//     height: "100%",
+//     borderRadius: 30,
+//   },
+//   profilePlaceholder: {
+//     width: "100%",
+//     height: "100%",
+//     borderRadius: 30,
+//     backgroundColor: "rgba(255, 255, 255, 0.25)",
+//     justifyContent: "center",
+//     alignItems: "center",
+//   },
+//   profileInitials: {
+//     color: "#fff",
+//     fontSize: 22,
+//     fontWeight: "bold",
+//     letterSpacing: 1,
+//   },
+//   onlineIndicator: {
+//     position: "absolute",
+//     bottom: 4,
+//     right: 4,
+//     width: 14,
+//     height: 14,
+//     borderRadius: 7,
+//     backgroundColor: "#4CAF50",
+//     borderWidth: 2.5,
+//     borderColor: FOREST_GREEN,
+//     zIndex: 10,
+//   },
 //   welcomeText: {
 //     color: "#fff",
 //     fontSize: 18,
@@ -524,24 +789,6 @@
 //     fontSize: 28,
 //     fontWeight: "800",
 //     letterSpacing: 0.3,
-//   },
-//   settingsButton: {
-//     padding: 8,
-//   },
-//   settingsIconWrap: {
-//     backgroundColor: "rgba(255, 255, 255, 0.2)",
-//     width: 44,
-//     height: 44,
-//     borderRadius: 22,
-//     justifyContent: "center",
-//     alignItems: "center",
-//     borderWidth: 1.5,
-//     borderColor: "rgba(255, 255, 255, 0.4)",
-//     elevation: 6,
-//     shadowColor: "#000",
-//     shadowOffset: { width: 0, height: 3 },
-//     shadowOpacity: 0.25,
-//     shadowRadius: 6,
 //   },
 //   statsRow: {
 //     flexDirection: "row",
@@ -736,6 +983,15 @@
 //     alignItems: "center",
 //     justifyContent: "center",
 //   },
+//   iconCircleBank: {
+//     height: 38,
+//     width: 38,
+//     borderRadius: 19,
+//     marginRight: 13,
+//     backgroundColor: "#F0F5FF",
+//     alignItems: "center",
+//     justifyContent: "center",
+//   },
 //   iconCircleGrey: {
 //     height: 38,
 //     width: 38,
@@ -755,6 +1011,13 @@
 //     fontSize: 15,
 //     fontWeight: "600",
 //     color: TEXT_DARK,
+//   },
+//   // Bank Details specific styles
+//   bankSubText: {
+//     fontSize: 12,
+//     color: "#666",
+//     marginTop: 2,
+//     fontWeight: "500",
 //   },
 //   infoNote: {
 //     fontSize: 13,
@@ -915,6 +1178,8 @@
 //   },
 // });
 
+
+// app/HostelDetails.tsx - Updated with Profile Image Integration
 import { MaterialCommunityIcons as Icon, Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { recordRoute } from "../utils/navigationHistory";
@@ -980,6 +1245,26 @@ interface UserProfile {
   phone?: string;
 }
 
+// Profile Image Response Interface (from your API)
+interface ProfileImageResponse {
+  success: boolean;
+  data: {
+    user: {
+      _id: string;
+      fullName: string;
+      mobileNumber: string;
+      email: string;
+      isActive: boolean;
+      createdAt: string;
+      updatedAt: string;
+      __v: number;
+    };
+    profileImage: {
+      url: string;
+    };
+  };
+}
+
 const initialHostel = {
   location: {
     city: "Telangana",
@@ -1014,8 +1299,11 @@ export default function HostelDetails() {
   const [bankDetails, setBankDetails] = useState<BankDetails | null>(null);
   const [bankDetailsLoading, setBankDetailsLoading] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
+  const [profileImageLoading, setProfileImageLoading] = useState(false);
+  const [profileImageError, setProfileImageError] = useState<string | null>(null);
 
-  const { user, fullName } = useAppSelector((state) => state.auth);
+  const { user, fullName, token, isAuthenticated } = useAppSelector((state) => state.auth);
 
   const {
     allRooms,
@@ -1028,7 +1316,7 @@ export default function HostelDetails() {
   // Initial data loading
   useEffect(() => {
     loadInitialData();
-  }, [dispatch]);
+  }, [dispatch, isAuthenticated]);
 
   const { photos, photosLoading } = useAppSelector(state => state.rooms);
   const { facilities, facilitiesLoading } = useAppSelector(state => state.rooms);
@@ -1037,7 +1325,50 @@ export default function HostelDetails() {
     dispatch(getHostelPhotos());
     dispatch(getFacilities());
     fetchUserProfile();
+    fetchProfileImage(); // Fetch profile image on component mount
   }, []);
+
+  // Fetch profile image from API
+  const fetchProfileImage = async () => {
+    if (!isAuthenticated || !token) {
+      console.log("User not authenticated, skipping profile image fetch");
+      return;
+    }
+
+    setProfileImageLoading(true);
+    setProfileImageError(null);
+    
+    try {
+      console.log("Fetching profile image...");
+      const response = await ApiClient.get<ProfileImageResponse>('/profile-image/user-profile');
+      
+      if (response.success && response.data.profileImage) {
+        console.log("Profile image fetched successfully:", response.data.profileImage.url);
+        setProfileImageUrl(response.data.profileImage.url);
+        
+        // Also update user profile if needed
+        if (response.data.user) {
+          setUserProfile({
+            name: response.data.user.fullName || user?.fullName || "Hostel Owner",
+            email: response.data.user.email,
+            phone: response.data.user.mobileNumber,
+            avatar: response.data.profileImage.url
+          });
+        }
+      } else {
+        console.log("No profile image found");
+        setProfileImageUrl(null);
+        // Set initials as fallback
+        setProfileImageError("No profile image set");
+      }
+    } catch (error: any) {
+      console.error("Error fetching profile image:", error);
+      setProfileImageError("Failed to load profile image");
+      setProfileImageUrl(null);
+    } finally {
+      setProfileImageLoading(false);
+    }
+  };
 
   // Load all initial data
   const loadInitialData = () => {
@@ -1045,6 +1376,9 @@ export default function HostelDetails() {
     fetchPricingData();
     fetchBankDetails();
     fetchUserProfile();
+    if (isAuthenticated) {
+      fetchProfileImage();
+    }
   };
 
   // Fetch user profile data
@@ -1062,8 +1396,8 @@ export default function HostelDetails() {
         setUserProfile({
           name: user?.fullName || "Hostel Owner",
           email: user?.email,
-          phone: user?.phone,
-          avatar: user?.avatar // Will be null initially
+          phone: user?.mobileNumber,
+          avatar: profileImageUrl || undefined
         });
       }
     } catch (error) {
@@ -1072,8 +1406,8 @@ export default function HostelDetails() {
       setUserProfile({
         name: user?.fullName || "Hostel Owner",
         email: user?.email,
-        phone: user?.phone,
-        avatar: user?.avatar
+        phone: user?.mobileNumber,
+        avatar: profileImageUrl || undefined
       });
     }
   };
@@ -1081,23 +1415,29 @@ export default function HostelDetails() {
   // Handle profile image update
   const handleProfileImageUpdate = async (imageUri: string) => {
     try {
-      // Upload image to server
+      // Upload image to server using FormData
       const formData = new FormData();
-      formData.append('avatar', {
+      const filename = imageUri.split('/').pop() || `profile_${Date.now()}.jpg`;
+      
+      formData.append('profileImage', {
         uri: imageUri,
         type: 'image/jpeg',
-        name: 'profile.jpg'
+        name: filename,
       } as any);
 
-      const response = await ApiClient.post("/user/upload-avatar", formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-
+      // Using the same endpoint as in Profile.tsx
+      const response = await ApiClient.postFormData("/profile-image/upload", formData);
+      
       if (response.success) {
         // Update local state
-        setUserProfile(prev => prev ? { ...prev, avatar: response.data.avatarUrl } : null);
+        setProfileImageUrl((response as any).data?.image?.url || imageUri);
+        
+        // Update user profile
+        setUserProfile(prev => prev ? { 
+          ...prev, 
+          avatar: (response as any).data?.image?.url || imageUri 
+        } : null);
+        
         // Show success message
         alert("Profile picture updated successfully!");
       }
@@ -1159,14 +1499,15 @@ export default function HostelDetails() {
         fetchBankDetails(),
         dispatch(getHostelPhotos()),
         dispatch(getFacilities()),
-        fetchUserProfile()
+        fetchUserProfile(),
+        fetchProfileImage() // Refresh profile image too
       ]);
     } catch (error) {
       console.error("Refresh error:", error);
     } finally {
       setRefreshing(false);
     }
-  }, [dispatch]);
+  }, [dispatch, isAuthenticated]);
 
   // Group pricing data by sharing type
   const groupPricingBySharingType = () => {
@@ -1205,6 +1546,17 @@ export default function HostelDetails() {
       "four": "Four Sharing"
     };
     return names[type] || `${type.charAt(0).toUpperCase() + type.slice(1)} Sharing`;
+  };
+
+  // Get initials from name for avatar placeholder
+  const getInitials = (name: string) => {
+    if (!name) return "HO";
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   const noBookings = !hostel.bookings || hostel.bookings.length === 0;
@@ -1321,14 +1673,40 @@ export default function HostelDetails() {
     </TouchableOpacity>
   );
 
-  // Get initials from name for avatar placeholder
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(part => part[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  // Render profile avatar with loading/error states
+  const renderProfileAvatar = () => {
+    if (profileImageLoading) {
+      return (
+        <View style={styles.profileIconWrap}>
+          <ActivityIndicator size="small" color="#fff" />
+        </View>
+      );
+    }
+
+    if (profileImageUrl) {
+      return (
+        <View style={styles.profileIconWrap}>
+          <Image
+            source={{ uri: profileImageUrl }}
+            style={styles.profileAvatar}
+            resizeMode="cover"
+          />
+          <View style={styles.onlineIndicator} />
+        </View>
+      );
+    }
+
+    // Fallback to initials
+    return (
+      <View style={styles.profileIconWrap}>
+        <View style={styles.profilePlaceholder}>
+          <Text style={styles.profileInitials}>
+            {getInitials(user?.fullName || userProfile?.name || "HO")}
+          </Text>
+        </View>
+        <View style={styles.onlineIndicator} />
+      </View>
+    );
   };
 
   return (
@@ -1343,7 +1721,7 @@ export default function HostelDetails() {
       >
         <View style={styles.headerContent}>
           <Text style={styles.welcomeText}>Welcome Back</Text>
-          <Text style={styles.ownerName}>{user?.fullName}</Text>
+          <Text style={styles.ownerName}>{user?.fullName || "Hostel Owner"}</Text>
         </View>
 
         {/* Header Right Icons - Profile and Settings */}
@@ -1355,24 +1733,9 @@ export default function HostelDetails() {
               try { recordRoute('/HostelDetails'); } catch (e) { }
               router.push("/Profile");
             }}
+            activeOpacity={0.8}
           >
-            <View style={styles.profileIconWrap}>
-              {userProfile?.avatar ? (
-                <Image
-                  source={{ uri: userProfile.avatar }}
-                  style={styles.profileAvatar}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.profilePlaceholder}>
-                  <Text style={styles.profileInitials}>
-                    {userProfile?.name ? getInitials(userProfile.name) : "HO"}
-                  </Text>
-                </View>
-              )}
-              {/* Online indicator */}
-              <View style={styles.onlineIndicator} />
-            </View>
+            {renderProfileAvatar()}
           </TouchableOpacity>
 
           {/* Settings Icon - Smaller */}
@@ -1382,6 +1745,7 @@ export default function HostelDetails() {
               try { recordRoute('/HostelDetails'); } catch (e) { }
               router.push("/tabs/Settings");
             }}
+            activeOpacity={0.8}
           >
             <View style={styles.settingsIconWrap}>
               <Ionicons name="settings-sharp" size={18} color="#fff" />
@@ -1404,12 +1768,12 @@ export default function HostelDetails() {
           <TouchableOpacity style={[styles.statCard, { borderColor: FOREST_GREEN }]} activeOpacity={0.9}>
             <Icon name="bed-double-outline" size={32} color={FOREST_GREEN} />
             <Text style={styles.statLabel}>Total Beds</Text>
-            <Text style={styles.statValue}>{summary?.totalBeds}</Text>
+            <Text style={styles.statValue}>{summary?.totalBeds || 0}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.statCard, { borderColor: VEGA_YELLOW }]} activeOpacity={0.9}>
             <Icon name="cash" size={32} color={VEGA_YELLOW} />
             <Text style={[styles.statLabel, { color: VEGA_YELLOW }]}>Vacant Beds</Text>
-            <Text style={[styles.statValue, { color: VEGA_YELLOW }]}>{summary?.vacantBeds}</Text>
+            <Text style={[styles.statValue, { color: VEGA_YELLOW }]}>{summary?.vacantBeds || 0}</Text>
           </TouchableOpacity>
         </View>
 
@@ -2078,19 +2442,5 @@ const styles = StyleSheet.create({
     color: TEXT_DARK,
     fontSize: 14,
     fontWeight: "600",
-  },
-  // Pull to Refresh Styles
-  pullToRefreshHint: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 8,
-    backgroundColor: BACKGROUND,
-  },
-  pullToRefreshText: {
-    fontSize: 12,
-    color: FOREST_GREEN,
-    marginLeft: 6,
-    fontStyle: "italic",
   },
 });
