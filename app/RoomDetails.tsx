@@ -15,8 +15,14 @@ import {
 import RNPickerSelect from "react-native-picker-select";
 import Toast from "react-native-toast-message";
 import { useAppDispatch, useAppSelector } from "../hooks/hooks";
-import { addRoom, clearRoomError, clearRoomSuccess } from "../app/reduxStore/reduxSlices/roomSlice";
+import {
+  addRoom,
+  getAllRooms,
+  clearRoomError,
+  clearRoomSuccess
+} from "../app/reduxStore/reduxSlices/roomSlice";
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { roomApi } from "../app/api/roomApi";
 
 const { width, height } = Dimensions.get("window");
 const KELLY_GREEN = "#4CBB17";
@@ -50,10 +56,32 @@ export default function RoomDetails() {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { loading, error, success } = useAppSelector((state) => state.rooms);
+  const { allRooms } = useAppSelector((state) => state.rooms);
 
   const [rooms, setRooms] = useState<Room[]>([
     { id: 1, floor: "", number: "", capacity: "", occupied: "0", sharing: "" },
   ]);
+  // 🔹 Fetch rooms from backend when screen loads
+  useEffect(() => {
+    dispatch(getAllRooms());
+  }, []);
+
+  //  When rooms come from API, populate editable form  ✅ ← PUT IT HERE
+  useEffect(() => {
+    if (allRooms && allRooms.length > 0) {
+      setRooms(
+        allRooms.map((room, index) => ({
+          id: index + 1,
+          floor: room.floor,
+          number: room.roomNumber,
+          capacity: String(room.capacity),
+          occupied: String(room.occupied),
+          sharing: room.sharingType,
+        }))
+      );
+    }
+  }, [allRooms]);
+
 
   useEffect(() => {
     if (success) {
@@ -247,7 +275,7 @@ export default function RoomDetails() {
   return (
     <View style={styles.container}>
       <TokenDebug />
-      
+
       {/* Simple Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
@@ -257,7 +285,7 @@ export default function RoomDetails() {
         <View style={styles.headerRightPlaceholder} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
@@ -272,26 +300,27 @@ export default function RoomDetails() {
                 <Text style={styles.roomTitle}>Room #{index + 1}</Text>
                 <View style={[
                   styles.statusBadge,
-                  { backgroundColor: 
-                    capacityValue > 0 && occupiedValue >= capacityValue ? '#FF6B6B' :
-                    capacityValue > 0 && occupiedValue > 0 ? '#FFA726' :
-                    KELLY_GREEN
+                  {
+                    backgroundColor:
+                      capacityValue > 0 && occupiedValue >= capacityValue ? '#FF6B6B' :
+                        capacityValue > 0 && occupiedValue > 0 ? '#FFA726' :
+                          KELLY_GREEN
                   }
                 ]}>
                   <Text style={styles.statusText}>
                     {capacityValue > 0 && occupiedValue >= capacityValue ? 'Full' :
-                     capacityValue > 0 && occupiedValue > 0 ? 'Partial' :
-                     'Empty'}
+                      capacityValue > 0 && occupiedValue > 0 ? 'Partial' :
+                        'Empty'}
                   </Text>
                 </View>
               </View>
 
               <Text style={styles.label}>Floor *</Text>
               <View style={styles.inputContainer}>
-                <Icon 
-                  name="floor-plan" 
-                  size={20} 
-                  color={KELLY_GREEN} 
+                <Icon
+                  name="floor-plan"
+                  size={20}
+                  color={KELLY_GREEN}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -306,10 +335,10 @@ export default function RoomDetails() {
 
               <Text style={styles.label}>Room Number *</Text>
               <View style={styles.inputContainer}>
-                <Icon 
-                  name="door" 
-                  size={20} 
-                  color={KELLY_GREEN} 
+                <Icon
+                  name="door"
+                  size={20}
+                  color={KELLY_GREEN}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -323,10 +352,10 @@ export default function RoomDetails() {
 
               <Text style={styles.label}>Capacity *</Text>
               <View style={styles.inputContainer}>
-                <Icon 
-                  name="account-group" 
-                  size={20} 
-                  color={KELLY_GREEN} 
+                <Icon
+                  name="account-group"
+                  size={20}
+                  color={KELLY_GREEN}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -341,10 +370,10 @@ export default function RoomDetails() {
 
               <Text style={styles.label}>Currently Occupied</Text>
               <View style={styles.inputContainer}>
-                <Icon 
-                  name="account-check" 
-                  size={20} 
-                  color={GOLDEN_YELLOW} 
+                <Icon
+                  name="account-check"
+                  size={20}
+                  color={GOLDEN_YELLOW}
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -359,10 +388,10 @@ export default function RoomDetails() {
 
               <Text style={styles.label}>Sharing Option *</Text>
               <View style={styles.inputContainer}>
-                <Icon 
-                  name="account-multiple" 
-                  size={20} 
-                  color={KELLY_GREEN} 
+                <Icon
+                  name="account-multiple"
+                  size={20}
+                  color={KELLY_GREEN}
                   style={styles.inputIcon}
                 />
                 <View style={styles.inputWrapper}>
@@ -428,10 +457,10 @@ export default function RoomDetails() {
                   styles.remainingPill,
                   { backgroundColor: remaining > 0 ? LIGHT_GREEN : '#FFEBEE' }
                 ]}>
-                  <Icon 
-                    name={remaining > 0 ? "bed-empty" : "bed"} 
-                    size={20} 
-                    color={remaining > 0 ? DARK_GREEN : '#D32F2F'} 
+                  <Icon
+                    name={remaining > 0 ? "bed-empty" : "bed"}
+                    size={20}
+                    color={remaining > 0 ? DARK_GREEN : '#D32F2F'}
                   />
                   <Text style={[
                     styles.remainingValue,
