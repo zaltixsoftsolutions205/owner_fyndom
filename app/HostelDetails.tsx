@@ -1305,6 +1305,10 @@ export default function HostelDetails() {
 
   const { user, fullName, token, isAuthenticated } = useAppSelector((state) => state.auth);
 
+
+  console.log("token from hostals",token);
+  
+
   const {
     allRooms,
     allRoomsLoading,
