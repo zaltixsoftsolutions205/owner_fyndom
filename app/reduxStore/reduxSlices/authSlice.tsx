@@ -134,6 +134,9 @@ export const refreshToken = createAsyncThunk<
   "auth/refreshToken",
   async (_, { rejectWithValue }) => {
     try {
+
+      console.log("this is calling from refresh token");
+      
       const refreshToken = await AsyncStorage.getItem("refreshToken");
       if (!refreshToken) {
         throw new Error("No refresh token available");
@@ -144,6 +147,9 @@ export const refreshToken = createAsyncThunk<
         refreshToken,
       });
       console.log('✅ Token refresh successful');
+
+      console.log("reponse from refresh token");
+      
       return response;
     } catch (error: any) {
       console.log('❌ Refresh token error:', error);

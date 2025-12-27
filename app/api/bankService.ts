@@ -35,7 +35,7 @@ export const bankService = {
   // Create or update bank details
   async createUpdateBankDetails(bankData: BankDetails): Promise<BankDetailsResponse> {
     try {
-      const response = await ApiClient.post<BankDetailsResponse>('/bank/details', bankData);
+      const response = await ApiClient.post<BankDetailsResponse>('/details', bankData);
       return response;
     } catch (error: any) {
       console.error('Error updating bank details:', error);

@@ -24,7 +24,7 @@ export const sendResetOTP = createAsyncThunk(
   async (email: string, { rejectWithValue }) => {
     try {
       const response = await ApiClient.post("/auth/forgot-password", { email });
-      return response;
+      return response.data; // ✅ FIX
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.message || "Failed to send OTP"
@@ -33,13 +33,14 @@ export const sendResetOTP = createAsyncThunk(
   }
 );
 
+
 // Verify OTP
 export const verifyOTP = createAsyncThunk(
   "forgotPassword/verifyOTP",
   async ({ email, otp }: { email: string; otp: string }, { rejectWithValue }) => {
     try {
       const response = await ApiClient.post("/auth/verify-otp", { email, otp });
-      return response;
+      return response.data; // ✅ FIX
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.message || "Invalid OTP"
@@ -51,14 +52,17 @@ export const verifyOTP = createAsyncThunk(
 // Reset Password
 export const resetPassword = createAsyncThunk(
   "forgotPassword/resetPassword",
-  async ({ email, otp, newPassword }: { email: string; otp: string; newPassword: string }, { rejectWithValue }) => {
+  async (
+    { email, otp, newPassword }: { email: string; otp: string; newPassword: string },
+    { rejectWithValue }
+  ) => {
     try {
       const response = await ApiClient.post("/auth/reset-password", {
         email,
         otp,
         newPassword
       });
-      return response;
+      return response.data; // ✅ FIX
     } catch (error: any) {
       return rejectWithValue(
         error.response?.data?.message || "Failed to reset password"
@@ -98,6 +102,7 @@ const forgotPasswordSlice = createSlice({
       .addCase(sendResetOTP.fulfilled, (state, action) => {
         state.loading = false;
         state.success = true;
+        state.error = null; 
         state.step = 'otp';
         state.email = action.meta.arg;
       })
