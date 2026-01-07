@@ -222,7 +222,7 @@ export const login = createAsyncThunk<
       console.log("✅ Login response received (success)");
       return response;
     } catch (error: any) {
-      console.log("❌ Login error details:", error);
+      // console.log("❌ Login error details:", error);
       let errorMessage = "Login failed, try again";
 
       if (error.message?.includes("Network Error") || error.code === "NETWORK_ERROR") {
@@ -443,7 +443,7 @@ const authSlice = createSlice({
         state.error = action.payload as string;
         state.isAuthenticated = false;
         state.isInitialized = true;
-        console.log('❌ Login rejected:', action.payload);
+        // console.log('❌ Login rejected:', action.payload);
       })
 
       // Refresh token cases

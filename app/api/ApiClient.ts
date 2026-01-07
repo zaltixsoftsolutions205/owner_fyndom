@@ -119,13 +119,13 @@ class ApiClient {
       async (error) => {
         const originalRequest = error.config;
 
-        console.error('❌ API Error:', {
-          message: error.message,
-          code: error.code,
-          url: error.config?.url,
-          baseURL: error.config?.baseURL,
-          status: error.response?.status
-        });
+        // console.error('❌ API Error:', {
+        //   message: error.message,
+        //   code: error.code,
+        //   url: error.config?.url,
+        //   baseURL: error.config?.baseURL,
+        //   status: error.response?.status
+        // });
 
         // Better error messages
         if (error.code === 'ECONNABORTED') {

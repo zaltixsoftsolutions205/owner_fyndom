@@ -59,7 +59,7 @@ const BankDetailsScreen = () => {
   // Get hostel ID from params or selected hostel
   const hostelId = params.hostelId as string || selectedHostelId;
   const hostelName = params.hostelName as string || '';
-  
+
   const [accountHolderName, setAccountHolderName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [ifscCode, setIfscCode] = useState('');
@@ -89,7 +89,7 @@ const BankDetailsScreen = () => {
 
       // Find the hostel in user's hostels
       const hostel = hostels.find(h => h.hostelId === hostelId);
-      
+
       if (!hostel) {
         Alert.alert('Hostel Not Found', 'The selected hostel was not found', [
           { text: 'OK', onPress: () => router.back() }
@@ -119,16 +119,17 @@ const BankDetailsScreen = () => {
   };
 
   // Load bank details for the approved hostel
+  // Update the loadBankDetailsForHostel function in BankDetailsPage.tsx
   const loadBankDetailsForHostel = async () => {
     if (!hostelId) return;
-    
+
     try {
       const response = await bankService.getBankDetails(hostelId);
-      
+
       if (response.success && response.data) {
         const bankDetails = response.data.bankDetails;
         setExistingBankDetails(bankDetails);
-        
+
         // Populate form with existing bank details
         setAccountHolderName(bankDetails.accountHolderName || '');
         setAccountNumber(bankDetails.accountNumber || '');
@@ -136,9 +137,14 @@ const BankDetailsScreen = () => {
         setBankName(bankDetails.bankName || '');
         setBranchName(bankDetails.branchName || '');
         setUpiId(bankDetails.upiId || '');
+
+        console.log('✅ Bank details loaded:', bankDetails);
+      } else {
+        console.log('ℹ️ No bank details found for this hostel');
+        // Keep form empty for new entry
       }
     } catch (error: any) {
-      console.log('Bank details not found or error loading:', error.message);
+      console.log('⚠️ Bank details not found or error loading:', error.message);
       // It's okay if no bank details exist yet
     }
   };
@@ -162,17 +168,17 @@ const BankDetailsScreen = () => {
   const handleSubmit = async () => {
     // Clear previous errors
     setErrors({});
-    
+
     if (!validateForm()) {
       Toast.show({ type: 'error', text1: 'Please fix the errors' });
       return;
     }
 
     if (!hostelId || !isHostelApproved) {
-      Toast.show({ 
-        type: 'error', 
-        text1: 'Error', 
-        text2: 'Hostel is not approved or not selected' 
+      Toast.show({
+        type: 'error',
+        text1: 'Error',
+        text2: 'Hostel is not approved or not selected'
       });
       return;
     }
@@ -209,18 +215,18 @@ const BankDetailsScreen = () => {
           const rawUser = await AsyncStorage.getItem('user');
           if (rawUser) {
             const parsedUser = JSON.parse(rawUser);
-            
+
             // Update or add bank details for this hostel
             if (!parsedUser.hostelBankDetails) {
               parsedUser.hostelBankDetails = {};
             }
-            
+
             parsedUser.hostelBankDetails[hostelId] = {
               ...response.data.bankDetails,
               hostelId: response.data.hostelId,
               hostelName: response.data.hostelName
             };
-            
+
             await AsyncStorage.setItem('user', JSON.stringify(parsedUser));
           }
         } catch (e) {
@@ -230,41 +236,41 @@ const BankDetailsScreen = () => {
         // Refresh auth state
         await dispatch(initializeAuth());
 
-        Toast.show({ 
-          type: 'success', 
-          text1: 'Success', 
-          text2: `Bank details saved for ${response.data.hostelName}` 
+        Toast.show({
+          type: 'success',
+          text1: 'Success',
+          text2: `Bank details saved for ${response.data.hostelName}`
         });
-        
+
         // Navigate to next screen or back
         setTimeout(() => {
           router.replace({
             pathname: '/HostelDetails',
-            params: { 
-              hostelId: response.data.hostelId, 
-              hostelName: response.data.hostelName 
+            params: {
+              hostelId: response.data.hostelId,
+              hostelName: response.data.hostelName
             }
           });
         }, 1500);
       } else {
-        Toast.show({ 
-          type: 'error', 
-          text1: 'Error', 
-          text2: response.message || 'Failed to save bank details' 
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: response.message || 'Failed to save bank details'
         });
         await setBankStatusPending();
       }
     } catch (error: any) {
       console.error('❌ Bank save error:', error.message);
-      
+
       // Parse backend validation errors
       const errorMessage = error.message || 'Failed to save bank details';
-      
+
       // Check if it's a validation error and parse field-specific errors
       if (errorMessage.toLowerCase().includes('validation')) {
         // Try to extract field errors from the message
         const fieldErrors: Record<string, string> = {};
-        
+
         // Common validation error patterns
         if (errorMessage.includes('accountHolderName')) {
           fieldErrors.accountHolderName = 'Please check account holder name';
@@ -284,29 +290,29 @@ const BankDetailsScreen = () => {
         if (errorMessage.includes('upiId') || errorMessage.includes('UPI')) {
           fieldErrors.upiId = 'Please check UPI ID';
         }
-        
+
         if (Object.keys(fieldErrors).length > 0) {
           setErrors(fieldErrors);
-          Toast.show({ 
-            type: 'error', 
-            text1: 'Validation Error', 
-            text2: 'Please check the highlighted fields' 
+          Toast.show({
+            type: 'error',
+            text1: 'Validation Error',
+            text2: 'Please check the highlighted fields'
           });
         } else {
-          Toast.show({ 
-            type: 'error', 
-            text1: 'Validation Error', 
-            text2: errorMessage 
+          Toast.show({
+            type: 'error',
+            text1: 'Validation Error',
+            text2: errorMessage
           });
         }
       } else {
-        Toast.show({ 
-          type: 'error', 
-          text1: 'Error', 
-          text2: errorMessage 
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: errorMessage
         });
       }
-      
+
       await setBankStatusPending();
     } finally {
       setSaving(false);
@@ -315,8 +321,8 @@ const BankDetailsScreen = () => {
 
   const handleSkip = async () => {
     Alert.alert(
-      'Skip Bank Details', 
-      'Are you sure you want to skip adding bank details for this hostel? You can add them later from the Hostel Details page.', 
+      'Skip Bank Details',
+      'Are you sure you want to skip adding bank details for this hostel? You can add them later from the Hostel Details page.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -325,7 +331,7 @@ const BankDetailsScreen = () => {
           onPress: async () => {
             try {
               await setBankStatusCompleted();
-              
+
               // Mark as skipped for this hostel
               const rawUser = await AsyncStorage.getItem('user');
               if (rawUser) {
@@ -338,19 +344,19 @@ const BankDetailsScreen = () => {
                   await AsyncStorage.setItem('user', JSON.stringify(parsedUser));
                 }
               }
-              
+
               await dispatch(initializeAuth());
-              
+
               router.replace({
                 pathname: '/HostelDetails',
                 params: { hostelId, hostelName }
               });
             } catch (e) {
               console.warn('Error during skip flow', e);
-              Toast.show({ 
-                type: 'error', 
-                text1: 'Error', 
-                text2: 'Could not skip. Try again.' 
+              Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Could not skip. Try again.'
               });
             }
           },
@@ -362,7 +368,7 @@ const BankDetailsScreen = () => {
   // Test function to debug
   const testWithExactData = async () => {
     console.log('🧪 Testing with exact data from API docs...');
-    
+
     const exactData = {
       accountHolderName: "Rangannagari Guru Ashok",
       accountNumber: "123456789012",
@@ -385,11 +391,11 @@ const BankDetailsScreen = () => {
         response: error.response?.data,
         status: error.response?.status
       });
-      
+
       if (error.response?.data?.errors) {
         console.log('🔍 Backend validation errors:', JSON.stringify(error.response.data.errors, null, 2));
         Alert.alert(
-          'Validation Errors', 
+          'Validation Errors',
           JSON.stringify(error.response.data.errors, null, 2)
         );
       } else {
@@ -417,15 +423,15 @@ const BankDetailsScreen = () => {
           <Text style={styles.headerTitle}>Bank Details</Text>
           <View style={styles.headerRightPlaceholder} />
         </View>
-        
+
         <View style={styles.errorContainer}>
           <Icon name="alert-circle" size={60} color="#FF6B6B" />
           <Text style={styles.errorTitle}>Hostel Not Approved</Text>
           <Text style={styles.errorText}>
-            Bank details can only be set for approved hostels. 
+            Bank details can only be set for approved hostels.
             Please select an approved hostel from the home screen.
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.returnButton}
             onPress={() => router.replace('/tabs/HostelOwnerHome')}
           >
@@ -447,7 +453,7 @@ const BankDetailsScreen = () => {
         <View style={styles.headerRightPlaceholder} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
@@ -469,7 +475,7 @@ const BankDetailsScreen = () => {
         <View style={styles.headerContainer}>
           <Icon name="bank" size={55} color={KELLY_GREEN} style={{ marginBottom: 8 }} />
           <Text style={styles.headerText}>Bank Details</Text>
-          
+
           {existingBankDetails?.isVerified && (
             <View style={styles.verifiedBadge}>
               <Icon name="check-circle" size={16} color="#fff" />
@@ -481,69 +487,69 @@ const BankDetailsScreen = () => {
         {/* Bank Details Card */}
         <View style={styles.card}>
           {/* Input Fields */}
-          <InputField 
-            label="Account Holder Name *" 
-            value={accountHolderName} 
-            onChangeText={(t) => { setAccountHolderName(t); if (errors.accountHolderName) setErrors({ ...errors, accountHolderName: '' }); }} 
-            placeholder="Enter account holder name" 
+          <InputField
+            label="Account Holder Name *"
+            value={accountHolderName}
+            onChangeText={(t) => { setAccountHolderName(t); if (errors.accountHolderName) setErrors({ ...errors, accountHolderName: '' }); }}
+            placeholder="Enter account holder name"
             iconName="account"
-            error={errors.accountHolderName} 
-            disabled={saving} 
+            error={errors.accountHolderName}
+            disabled={saving}
           />
 
-          <InputField 
-            label="Account Number *" 
-            value={accountNumber} 
-            onChangeText={(t) => { setAccountNumber(t.replace(/[^0-9]/g, '')); if (errors.accountNumber) setErrors({ ...errors, accountNumber: '' }); }} 
-            placeholder="Enter account number" 
+          <InputField
+            label="Account Number *"
+            value={accountNumber}
+            onChangeText={(t) => { setAccountNumber(t.replace(/[^0-9]/g, '')); if (errors.accountNumber) setErrors({ ...errors, accountNumber: '' }); }}
+            placeholder="Enter account number"
             keyboardType="numeric"
             iconName="credit-card"
-            maxLength={18} 
-            error={errors.accountNumber} 
-            disabled={saving} 
+            maxLength={18}
+            error={errors.accountNumber}
+            disabled={saving}
           />
 
-          <InputField 
-            label="IFSC Code *" 
-            value={ifscCode} 
-            onChangeText={(t) => { setIfscCode(t.toUpperCase()); if (errors.ifscCode) setErrors({ ...errors, ifscCode: '' }); }} 
-            placeholder="Enter IFSC code" 
+          <InputField
+            label="IFSC Code *"
+            value={ifscCode}
+            onChangeText={(t) => { setIfscCode(t.toUpperCase()); if (errors.ifscCode) setErrors({ ...errors, ifscCode: '' }); }}
+            placeholder="Enter IFSC code"
             autoCapitalize="characters"
             iconName="identifier"
-            maxLength={11} 
-            error={errors.ifscCode} 
-            disabled={saving} 
+            maxLength={11}
+            error={errors.ifscCode}
+            disabled={saving}
           />
 
-          <InputField 
-            label="Bank Name *" 
-            value={bankName} 
-            onChangeText={(t) => { setBankName(t); if (errors.bankName) setErrors({ ...errors, bankName: '' }); }} 
-            placeholder="Enter bank name" 
+          <InputField
+            label="Bank Name *"
+            value={bankName}
+            onChangeText={(t) => { setBankName(t); if (errors.bankName) setErrors({ ...errors, bankName: '' }); }}
+            placeholder="Enter bank name"
             iconName="bank"
-            error={errors.bankName} 
-            disabled={saving} 
+            error={errors.bankName}
+            disabled={saving}
           />
 
-          <InputField 
-            label="Branch Name *" 
-            value={branchName} 
-            onChangeText={(t) => { setBranchName(t); if (errors.branchName) setErrors({ ...errors, branchName: '' }); }} 
-            placeholder="Enter branch name" 
+          <InputField
+            label="Branch Name *"
+            value={branchName}
+            onChangeText={(t) => { setBranchName(t); if (errors.branchName) setErrors({ ...errors, branchName: '' }); }}
+            placeholder="Enter branch name"
             iconName="map-marker"
-            error={errors.branchName} 
-            disabled={saving} 
+            error={errors.branchName}
+            disabled={saving}
           />
 
-          <InputField 
-            label="UPI ID (Optional)" 
-            value={upiId} 
-            onChangeText={(t) => { setUpiId(t.toLowerCase()); if (errors.upiId) setErrors({ ...errors, upiId: '' }); }} 
-            placeholder="Enter UPI ID" 
+          <InputField
+            label="UPI ID (Optional)"
+            value={upiId}
+            onChangeText={(t) => { setUpiId(t.toLowerCase()); if (errors.upiId) setErrors({ ...errors, upiId: '' }); }}
+            placeholder="Enter UPI ID"
             autoCapitalize="none"
             iconName="qrcode"
-            error={errors.upiId} 
-            disabled={saving} 
+            error={errors.upiId}
+            disabled={saving}
           />
 
           {/* Note */}
@@ -564,7 +570,7 @@ const BankDetailsScreen = () => {
           >
             <Text style={styles.skipButtonText}>Skip</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.saveButton, saving && { opacity: 0.6 }]}
             onPress={handleSubmit}
@@ -615,10 +621,10 @@ const InputField = ({
   <View style={styles.inputContainer}>
     <Text style={styles.label}>{label}</Text>
     <View style={[styles.inputWrapper, error && styles.inputError]}>
-      <Icon 
-        name={iconName} 
-        size={20} 
-        color={error ? '#FF6B6B' : KELLY_GREEN} 
+      <Icon
+        name={iconName}
+        size={20}
+        color={error ? '#FF6B6B' : KELLY_GREEN}
         style={styles.inputIcon}
       />
       <TextInput

@@ -40,7 +40,7 @@ export const sendResetOTP = createAsyncThunk(
         return rejectWithValue(response.message || "Failed to send OTP");
       }
     } catch (error: any) {
-      console.error('❌ OTP send error:', error);
+      // console.error('❌ OTP send error:', error);
 
       let errorMessage = "Failed to send OTP. Please try again.";
 
@@ -194,7 +194,7 @@ const forgotPasswordSlice = createSlice({
         state.loading = false;
         state.success = false;
         state.error = action.payload as string;
-        console.log('❌ OTP send failed:', action.payload);
+        // console.log('❌ OTP send failed:', action.payload);
       })
 
       // Verify OTP

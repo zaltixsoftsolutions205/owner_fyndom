@@ -219,12 +219,12 @@ export default function HostelOwnerLogin() {
       newErrors.newPassword = "Include at least one uppercase letter";
     else if (!/(?=.*[!@#$%^&*])/.test(newPassword))
       newErrors.newPassword = "Include at least one special character (!@#$%^&*)";
-    
+
     if (!confirmPassword.trim())
       newErrors.confirmPassword = "Confirm password required";
     else if (newPassword !== confirmPassword)
       newErrors.confirmPassword = "Passwords do not match";
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -236,13 +236,13 @@ export default function HostelOwnerLogin() {
       const isConnected = await ApiClient.testConnection();
       if (isConnected) {
         Alert.alert(
-          '✅ Connection Successful', 
+          '✅ Connection Successful',
           'Server is reachable and responding properly.\n\nYou can proceed with forgot password flow.',
           [{ text: 'OK' }]
         );
       } else {
         Alert.alert(
-          '❌ Connection Failed', 
+          '❌ Connection Failed',
           'Cannot connect to server. Please check:\n\n1. Backend server is running\n2. Correct IP address in settings\n3. Both devices on same WiFi network\n4. Port 5000 is not blocked',
           [{ text: 'OK' }]
         );
@@ -256,8 +256,8 @@ export default function HostelOwnerLogin() {
 
   const handleLogin = async () => {
     if (!validateLogin()) {
-      Toast.show({ 
-        type: "error", 
+      Toast.show({
+        type: "error",
         text1: "Validation Error",
         text2: "Please fix the errors above.",
         position: "top"
@@ -293,7 +293,7 @@ export default function HostelOwnerLogin() {
         }
       }, 400);
     } catch (err: any) {
-      console.log("❌ Login error in component:", err);
+      // console.log("❌ Login error in component:", err);
       Toast.show({
         type: "error",
         text1: "Login Failed",
@@ -308,8 +308,8 @@ export default function HostelOwnerLogin() {
   // Step 1: Request OTP
   const handleSendResetOtp = () => {
     if (!validateResetEmail()) {
-      Toast.show({ 
-        type: "error", 
+      Toast.show({
+        type: "error",
         text1: "Validation Error",
         text2: "Please provide a valid email.",
         position: "top"
@@ -323,8 +323,8 @@ export default function HostelOwnerLogin() {
   // Step 2: Verify OTP
   const handleVerifyOtp = () => {
     if (!validateResetOtp()) {
-      Toast.show({ 
-        type: "error", 
+      Toast.show({
+        type: "error",
         text1: "Validation Error",
         text2: "Please enter a valid OTP.",
         position: "top"
@@ -338,18 +338,18 @@ export default function HostelOwnerLogin() {
   // Step 3: Reset password - USING resetToken
   const handleSetNewPassword = () => {
     if (!validateNewPassword()) {
-      Toast.show({ 
-        type: "error", 
+      Toast.show({
+        type: "error",
         text1: "Validation Error",
         text2: "Please fix the password fields.",
         position: "top"
       });
       return;
     }
-    
+
     console.log('🔄 Resetting password for:', resetEmail);
     console.log('📦 Using reset token:', storedResetToken);
-    
+
     if (!storedResetToken) {
       Toast.show({
         type: "error",
@@ -359,7 +359,7 @@ export default function HostelOwnerLogin() {
       });
       return;
     }
-    
+
     dispatch(resetPassword({
       email: resetEmail,
       resetToken: storedResetToken,
@@ -378,7 +378,7 @@ export default function HostelOwnerLogin() {
       });
       return;
     }
-    
+
     console.log('🔄 Resending OTP to:', resetEmail);
     dispatch(sendResetOTP(resetEmail));
   };
@@ -423,16 +423,16 @@ export default function HostelOwnerLogin() {
             text: 'Test',
             onPress: async () => {
               try {
-                const response = await ApiClient.post("/auth/forgot-password", { 
-                  email: testEmail 
+                const response = await ApiClient.post("/auth/forgot-password", {
+                  email: testEmail
                 });
                 Alert.alert(
-                  '✅ API Test Result', 
+                  '✅ API Test Result',
                   `Success: ${response.success}\n\nMessage: ${response.message}\n\nData: ${JSON.stringify(response.data, null, 2)}`
                 );
               } catch (error: any) {
                 Alert.alert(
-                  '❌ API Test Failed', 
+                  '❌ API Test Failed',
                   `Error: ${error.message}\n\nDetails: ${JSON.stringify(error.response?.data, null, 2)}`
                 );
               }
@@ -470,27 +470,9 @@ export default function HostelOwnerLogin() {
             <View style={styles.card}>
               {/* TITLE */}
               <Text style={styles.cardTitle}>
-                {resetMode
-                  ? `🔒 Forgot Password ${forgotPasswordStep === 'email' ? '' : `- Step ${forgotPasswordStep === 'otp' ? '2' : forgotPasswordStep === 'reset' ? '3' : '4'}`}`
-                  : "🔑 Hostel Owner Login"}
+                {resetMode ? "🔒 Forgot Password" : "🔑 Hostel Owner Login"}
               </Text>
 
-              {/* Connection Test Button (Temporary - remove after testing) */}
-              <TouchableOpacity
-                style={[styles.buttonPrimary, { 
-                  backgroundColor: INFO, 
-                  marginBottom: 15,
-                  paddingVertical: 10 
-                }]}
-                onPress={testServerConnection}
-                disabled={testingConnection}
-              >
-                {testingConnection ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Test Server Connection</Text>
-                )}
-              </TouchableOpacity>
 
               {/* LOGIN FORM */}
               {!resetMode && (
@@ -645,7 +627,7 @@ export default function HostelOwnerLogin() {
                         }
                         secureTextEntry={!showOtpPassword}
                       />
-                      
+
                       {/* Resend OTP section */}
                       <View style={styles.resendContainer}>
                         <Text style={styles.resendText}>
@@ -801,7 +783,7 @@ export default function HostelOwnerLogin() {
                         {forgotPasswordStep === 'email' ? '⬅ Back to Login' : '⬅ Back'}
                       </Text>
                     </TouchableOpacity>
-                    
+
                     {forgotPasswordStep !== 'success' && (
                       <TouchableOpacity
                         onPress={resetForgotPasswordFlow}
@@ -831,7 +813,7 @@ export default function HostelOwnerLogin() {
               )}
 
               {/* API Test Button (Debug - remove in production) */}
-              {__DEV__ && (
+              {/* {__DEV__ && (
                 <TouchableOpacity
                   onPress={testForgotPasswordAPI}
                   style={styles.debugButton}
@@ -841,7 +823,7 @@ export default function HostelOwnerLogin() {
                     [Debug] Test Forgot Password API
                   </Text>
                 </TouchableOpacity>
-              )}
+              )} */}
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
@@ -936,9 +918,9 @@ const styles = StyleSheet.create({
   iconContainer: {
     marginLeft: 8,
   },
-  errorText: { 
-    color: ERROR, 
-    fontSize: 12.5, 
+  errorText: {
+    color: ERROR,
+    fontSize: 12.5,
     marginTop: 3,
     marginLeft: 4,
   },
@@ -959,18 +941,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 15,
   },
-  backButton: { 
+  backButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,
   },
-  backButtonText: { 
-    color: PRIMARY, 
-    fontWeight: "600", 
-    fontSize: 14 
+  backButtonText: {
+    color: PRIMARY,
+    fontWeight: "600",
+    fontSize: 14
   },
-  bgContainer: { 
-    ...StyleSheet.absoluteFillObject, 
-    zIndex: 0 
+  bgContainer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0
   },
   successMsg: {
     color: SUCCESS,
