@@ -199,12 +199,7 @@ export default function HostelDetails() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const dispatch = useAppDispatch();
-  
-  // State for multiple hostels
-  const [hostels, setHostels] = useState<Hostel[]>(initialHostels);
-  const [selectedHostel, setSelectedHostel] = useState<Hostel>(initialHostels[0]);
-  const [showHostelDropdown, setShowHostelDropdown] = useState(false);
-  
+  const [hostel] = useState(initialHostel);
   const [pricingData, setPricingData] = useState<PricingData[]>([]);
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingError, setPricingError] = useState<string | null>(null);
@@ -755,14 +750,7 @@ export default function HostelDetails() {
       .slice(0, 2);
   };
 
-  const noBookings = !selectedHostel.bookings || selectedHostel.bookings.length === 0;
-
-  // Handle hostel selection
-  const handleHostelSelect = (hostel: Hostel) => {
-    setSelectedHostel(hostel);
-    setShowHostelDropdown(false);
-    // Here you could also fetch hostel-specific data
-  };
+  const noBookings = !hostel.bookings || hostel.bookings.length === 0;
 
   // Refresh Control configuration
   const refreshControl = (
@@ -1838,7 +1826,6 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   // Large Profile Icon
-  // Large Profile Icon
   profileIconWrap: {
     width: 46,
     height: 46,
@@ -2104,23 +2091,6 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: 0.3,
   },
-  // Section Header
-  sectionHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-end",
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: FOREST_GREEN,
-  },
-  sectionSubtitle: {
-    fontSize: 12,
-    color: "#666",
-    fontStyle: "italic",
-  },
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -2202,6 +2172,12 @@ const styles = StyleSheet.create({
   sectionWrap: {
     marginHorizontal: 16,
     marginTop: 18,
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: FOREST_GREEN,
     marginBottom: 10,
   },
   roomCard: {
@@ -2448,7 +2424,7 @@ const styles = StyleSheet.create({
     opacity: 0.85,
     marginTop: 2,
   },
-  // Pricing Card Styles
+  // New Pricing Card Styles
   pricingCard: {
     marginHorizontal: 16,
     marginBottom: 13,
@@ -2596,123 +2572,5 @@ const styles = StyleSheet.create({
     color: TEXT_DARK,
     fontSize: 14,
     fontWeight: "600",
-  },
-  // Hostel Dropdown Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-start",
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight + 60 : 100,
-  },
-  hostelDropdownContainer: {
-    backgroundColor: "#fff",
-    marginHorizontal: 20,
-    borderRadius: 20,
-    maxHeight: "80%",
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  dropdownHeader: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-    backgroundColor: FOREST_GREEN,
-  },
-  dropdownTitle: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 4,
-  },
-  dropdownSubtitle: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.85)",
-    fontWeight: "500",
-  },
-  hostelList: {
-    maxHeight: 400,
-  },
-  hostelOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f5f5f5",
-  },
-  hostelOptionSelected: {
-    backgroundColor: FOREST_GREEN + "20",
-  },
-  hostelOptionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#ECFCF7",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  hostelOptionDetails: {
-    flex: 1,
-  },
-  hostelOptionName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: TEXT_DARK,
-    marginBottom: 4,
-  },
-  hostelOptionNameSelected: {
-    color: FOREST_GREEN,
-  },
-  hostelOptionLocation: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 6,
-  },
-  hostelOptionLocationSelected: {
-    color: "#609269",
-  },
-  hostelStats: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  statPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#f5f5f5",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  statPillText: {
-    fontSize: 10,
-    color: "#666",
-    fontWeight: "500",
-  },
-  selectedIndicator: {
-    marginLeft: 8,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: "#f0f0f0",
-  },
-  addHostelButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: "#eee",
-    backgroundColor: "#F8F9FA",
-    gap: 8,
-  },
-  addHostelButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: FOREST_GREEN,
   },
 });
