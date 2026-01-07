@@ -1,417 +1,6 @@
-// import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
-// import { useRouter } from "expo-router";
-// import React, { useState, useEffect } from "react";
-// import {
-//   Dimensions,
-//   ScrollView,
-//   StyleSheet,
-//   Text,
-//   TouchableOpacity,
-//   View,
-//   ActivityIndicator,
-// } from "react-native";
-// import Toast from "react-native-toast-message";
-// import { useDispatch, useSelector } from "react-redux";
-// import { setFacilities, clearError, clearSuccess } from "../app/reduxStore/reduxSlices/facilitiesSlice";
-// import { AppDispatch, RootState } from "../app/reduxStore/store/store";
-
-// const { width, height } = Dimensions.get("window");
-// const KELLY_GREEN = "#4CBB17";
-// const GOLDEN_YELLOW = "#FFDF00";
-
-// // Mapping between frontend IDs and backend values
-// const FACILITY_MAPPING = {
-//   // Room Types
-//   "single": { roomType: "Single Room", sharingType: null },
-//   "double": { roomType: "Double Room", sharingType: null },
-//   "triple": { roomType: "Triple Room", sharingType: null },
-
-//   // Bathroom Types
-//   "attached": "Attached Bathroom",
-//   "common": "Common Bathroom",
-
-//   // Essentials
-//   "ac": "Air Conditioning",
-//   "wifi": "Free WiFi",
-//   "power-backup": "Power Backup",
-//   "cctv": "CCTV Security",
-//   "ro-water": "RO Water",
-//   "cleaning": "Daily Cleaning",
-//   "lift": "Elevator/Lift",
-//   "laundry": "Laundry Service",
-//   "parking": "Parking Space",
-//   "dining": "Dining Hall",
-//   "library": "Study Room/Library",
-//   "geyser": "Hot Water/Geyser/Inverter",
-//   "inverter": "Hot Water/Geyser/Inverter", // Map to same value as geyser
-//   "heater": "Room Heater",
-
-//   // Food Services
-//   "veg": "Vegetarian Meals",
-//   "non-veg": "Non-vegetarian Meals",
-//   "breakfast": "Breakfast",
-//   "lunch": "Lunch",
-//   "dinner": "Dinner",
-//   "tea-coffee": "Tea/Coffee",
-//   "chinese": "Chinese Meals",
-//   "north-indian": "North Indian Meals",
-// };
-
-// const FacilitiesScreen = () => {
-//   const router = useRouter();
-//   const dispatch = useDispatch<AppDispatch>();
-//   const { loading, error, success } = useSelector((state: RootState) => state.facilities);
-
-//   const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
-//   const [selectedSharing, setSelectedSharing] = useState<Record<string, string | null>>({});
-
-//   const facilities = [
-//     { id: "single", name: "Single Room", category: "Room Type" },
-//     { id: "double", name: "Double Room", category: "Room Type" },
-//     { id: "triple", name: "Triple Room", category: "Room Type" },
-//     { id: "attached", name: "Attached Bathroom", category: "Bathroom" },
-//     { id: "common", name: "Common Bathroom", category: "Bathroom" },
-//     { id: "ac", name: "Air Conditioning", category: "Essential" },
-//     { id: "wifi", name: "Free WiFi", category: "Essential" },
-//     { id: "power-backup", name: "Power Backup", category: "Essential" },
-//     { id: "cctv", name: "CCTV Security", category: "Essential" },
-//     { id: "ro-water", name: "RO Water", category: "Essential" },
-//     { id: "cleaning", name: "Daily Cleaning", category: "Essential" },
-//     { id: "lift", name: "Elevator/Lift", category: "Essential" },
-//     { id: "laundry", name: "Laundry Service", category: "Essential" },
-//     { id: "parking", name: "Parking Space", category: "Essential" },
-//     { id: "dining", name: "Dining Hall", category: "Essential" },
-//     { id: "library", name: "Study Room/Library", category: "Essential" },
-//     { id: "geyser", name: "Hot Water / Geyser", category: "Essential" },
-//     { id: "inverter", name: "Inverter", category: "Essential" },
-//     { id: "heater", name: "Room Heater", category: "Essential" },
-//     { id: "veg", name: "Vegetarian Meals", category: "Food" },
-//     { id: "non-veg", name: "Non-Vegetarian Meals", category: "Food" },
-//     { id: "breakfast", name: "Breakfast", category: "Food" },
-//     { id: "lunch", name: "Lunch", category: "Food" },
-//     { id: "dinner", name: "Dinner", category: "Food" },
-//     { id: "tea-coffee", name: "Tea/Coffee", category: "Food" },
-//     { id: "chinese", name: "Chinese Meals", category: "Food" },
-//     { id: "north-indian", name: "North Indian Meals", category: "Food" },
-//   ];
-
-//   const categories = [...new Set(facilities.map((f) => f.category))];
-
-//   // Handle errors and success messages
-//   useEffect(() => {
-//     if (error) {
-//       Toast.show({
-//         type: "error",
-//         text1: "Error ❌",
-//         text2: error,
-//       });
-//       dispatch(clearError());
-//     }
-
-//     if (success) {
-//       Toast.show({
-//         type: "success",
-//         text1: "Facilities Saved Successfully ✅",
-//         text2: "Your hostel facilities have been updated.",
-//       });
-//       dispatch(clearSuccess());
-//       // ✅ Redirect to Summary page after successful save
-//       router.push("/Summary");
-//     }
-//   }, [error, success, dispatch, router]);
-
-//   const toggleFacility = (facilityId: string) => {
-//     setSelectedFacilities((prev) =>
-//       prev.includes(facilityId) ? prev.filter((id) => id !== facilityId) : [...prev, facilityId]
-//     );
-//   };
-
-//   const handleRemoveSelected = (facilityId: string) => {
-//     setSelectedFacilities((prev) => prev.filter((id) => id !== facilityId));
-//     setSelectedSharing((prev) => {
-//       const newSharing = { ...prev };
-//       delete newSharing[facilityId];
-//       return newSharing;
-//     });
-//   };
-
-//   const formatDataForAPI = () => {
-//     const roomSharingTypes: Array<{ roomType: "Single Room" | "Double Room" | "Triple Room"; sharingType: "2 Sharing" | "3 Sharing" | "4 Sharing" }> = [];
-//     const bathroomTypes: string[] = [];
-//     const essentials: string[] = [];
-//     const foodServices: string[] = [];
-
-//     selectedFacilities.forEach(facilityId => {
-//       const mapping = FACILITY_MAPPING[facilityId as keyof typeof FACILITY_MAPPING];
-
-//       if (!mapping) return;
-
-//       if (typeof mapping === 'object' && 'roomType' in mapping) {
-//         // This is a room type
-//         const sharingType = selectedSharing[facilityId];
-//         if (sharingType) {
-//           roomSharingTypes.push({
-//             roomType: mapping.roomType as "Single Room" | "Double Room" | "Triple Room",
-//             sharingType: sharingType as "2 Sharing" | "3 Sharing" | "4 Sharing"
-//           });
-//         }
-//       } else if (typeof mapping === 'string') {
-//         // This is other facility type
-//         if (facilityId === "attached" || facilityId === "common") {
-//           bathroomTypes.push(mapping);
-//         } else if ([
-//           "ac", "wifi", "power-backup", "cctv", "ro-water", "cleaning", 
-//           "lift", "laundry", "parking", "dining", "library", "geyser", 
-//           "inverter", "heater"
-//         ].includes(facilityId)) {
-//           essentials.push(mapping);
-//         } else if ([
-//           "veg", "non-veg", "breakfast", "lunch", "dinner", 
-//           "tea-coffee", "chinese", "north-indian"
-//         ].includes(facilityId)) {
-//           foodServices.push(mapping);
-//         }
-//       }
-//     });
-
-//     return {
-//       roomSharingTypes,
-//       bathroomTypes,
-//       essentials,
-//       foodServices
-//     };
-//   };
-
-//   const handleSubmit = () => {
-//     if (selectedFacilities.length === 0) {
-//       Toast.show({ 
-//         type: "error", 
-//         text1: "No Facilities Selected ⚠️", 
-//         text2: "Please select at least one facility." 
-//       });
-//       return;
-//     }
-
-//     // Validate room types have sharing selected
-//     const roomTypeIds = ["single", "double", "triple"];
-//     const selectedRoomTypes = selectedFacilities.filter(id => roomTypeIds.includes(id));
-//     const missingSharing = selectedRoomTypes.filter(roomId => !selectedSharing[roomId]);
-
-//     if (missingSharing.length > 0) {
-//       Toast.show({
-//         type: "error",
-//         text1: "Missing Sharing Type ⚠️",
-//         text2: "Please select sharing type for all room types.",
-//       });
-//       return;
-//     }
-
-//     const apiData = formatDataForAPI();
-//     console.log("Submitting facilities data:", apiData);
-
-//     dispatch(setFacilities(apiData));
-//   };
-
-//   return (
-//     <View style={styles.safeArea}>
-//       <ScrollView contentContainerStyle={styles.scrollContent}>
-//         {/* Back Button - arrow only */}
-//         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}> 
-//           <Icon name="arrow-left" size={width * 0.06} color={KELLY_GREEN} />
-//         </TouchableOpacity>
-
-//         {/* Header */}
-//         <View style={styles.headerContainer}>
-//           <Icon name="cog" size={55} color={KELLY_GREEN} style={{ marginBottom: 8 }} />
-//           <Text style={styles.header}>Facilities & Amenities</Text>
-//           <Text style={styles.subHeader}>Select facilities available in your hostel</Text>
-//         </View>
-
-//         {/* Facility Cards */}
-//         {categories.map((category) => (
-//           <View key={category} style={styles.card}>
-//             <Text style={styles.cardTitle}>{category}</Text>
-//             <View style={styles.optionsGrid}>
-//               {facilities
-//                 .filter((f) => f.category === category)
-//                 .map((facility) => (
-//                   <View key={facility.id} style={styles.optionWrapper}>
-//                     <TouchableOpacity
-//                       style={[
-//                         styles.option,
-//                         selectedFacilities.includes(facility.id) && styles.optionSelected,
-//                       ]}
-//                       onPress={() => toggleFacility(facility.id)}
-//                     >
-//                       <Text
-//                         style={[
-//                           styles.optionText,
-//                           selectedFacilities.includes(facility.id) && styles.optionTextSelected,
-//                         ]}
-//                       >
-//                         {facility.name}
-//                       </Text>
-//                     </TouchableOpacity>
-
-//                     {selectedFacilities.includes(facility.id) && category === "Room Type" && (
-//                       <View style={styles.sharingDropdown}>
-//                         {["2 Sharing", "3 Sharing", "4 Sharing"].map((opt) => (
-//                           <TouchableOpacity
-//                             key={opt}
-//                             style={[
-//                               styles.sharingOption,
-//                               selectedSharing[facility.id] === opt && styles.sharingOptionSelected,
-//                             ]}
-//                             onPress={() => setSelectedSharing((prev) => ({ ...prev, [facility.id]: opt }))}
-//                           >
-//                             <Text
-//                               style={[
-//                                 styles.sharingText,
-//                                 selectedSharing[facility.id] === opt && styles.sharingTextSelected,
-//                               ]}
-//                             >
-//                               {opt}
-//                             </Text>
-//                           </TouchableOpacity>
-//                         ))}
-//                       </View>
-//                     )}
-//                   </View>
-//                 ))}
-//             </View>
-//           </View>
-//         ))}
-
-//         {/* Selected Facilities */}
-//         {selectedFacilities.length > 0 && (
-//           <View style={styles.selectedCard}>
-//             <Text style={styles.selectedTitle}>Selected Facilities ({selectedFacilities.length})</Text>
-//             <View style={styles.selectedTags}>
-//               {facilities
-//                 .filter((f) => selectedFacilities.includes(f.id))
-//                 .map((f) => (
-//                   <View key={f.id} style={styles.tag}>
-//                     <Text style={styles.tagText}>
-//                       {f.name}
-//                       {selectedSharing[f.id] ? ` (${selectedSharing[f.id]})` : ""}
-//                     </Text>
-//                     <TouchableOpacity
-//                       style={styles.removeTagButton}
-//                       onPress={() => handleRemoveSelected(f.id)}
-//                     >
-//                       <Text style={styles.removeTagText}>×</Text>
-//                     </TouchableOpacity>
-//                   </View>
-//                 ))}
-//             </View>
-//           </View>
-//         )}
-
-//         {/* Save & Next Button */}
-//         <TouchableOpacity 
-//           style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
-//           onPress={handleSubmit}
-//           disabled={loading}
-//         >
-//           {loading ? (
-//             <ActivityIndicator size="small" color="#222" />
-//           ) : (
-//             <>
-//               <Text style={styles.saveText}>Save & Next</Text>
-//               <Icon name="arrow-right" size={18} color="#222" style={styles.arrowIcon} />
-//             </>
-//           )}
-//         </TouchableOpacity>
-//       </ScrollView>
-
-//       <Toast />
-//     </View>
-//   );
-// };
-
-// export default FacilitiesScreen;
-
-// const styles = StyleSheet.create({
-//   safeArea: { flex: 1, backgroundColor: "#fff" },
-//   scrollContent: { padding: 16, paddingBottom: 40, alignItems: "center" },
-
-//   backBtn: { marginTop: height * 0.02, alignSelf: "flex-start", paddingHorizontal: 10 },
-
-//   headerContainer: { alignItems: "center", marginBottom: 16, marginTop: 6 },
-//   header: { fontSize: width * 0.06, fontWeight: "900", color: KELLY_GREEN, textAlign: "center" },
-//   subHeader: { fontSize: width * 0.04, color: "#161515", textAlign: "center", marginTop: 4, paddingHorizontal: 20 },
-
-//   card: { width: "100%", backgroundColor: "#fff", borderRadius: 16, padding: 14, marginBottom: 14, elevation: 3 },
-//   cardTitle: { fontSize: 15, fontWeight: "600", marginBottom: 10, color: "#111" },
-//   optionsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
-//   optionWrapper: { width: "48%", marginBottom: 8 },
-//   option: { borderWidth: 1, borderColor: "#d1d5db", borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10, backgroundColor: "#fff" },
-//   optionSelected: { backgroundColor: KELLY_GREEN, borderColor: KELLY_GREEN },
-//   optionText: { fontSize: 13, color: "#3E3E3E" },
-//   optionTextSelected: { color: "#fff" },
-
-//   sharingDropdown: { flexDirection: "row", flexWrap: "wrap", marginTop: 6 },
-//   sharingOption: { borderWidth: 1, borderColor: "#ccc", borderRadius: 6, paddingVertical: 4, paddingHorizontal: 8, marginRight: 6, marginTop: 4, backgroundColor: "#fafafa" },
-//   sharingOptionSelected: { backgroundColor: KELLY_GREEN, borderColor: KELLY_GREEN },
-//   sharingText: { fontSize: 11, color: "#333" },
-//   sharingTextSelected: { color: "#fff" },
-
-//   selectedCard: { backgroundColor: "rgba(76,187,23,0.1)", borderRadius: 12, padding: 12, marginTop: 10 },
-//   selectedTitle: { fontSize: 14, fontWeight: "600", marginBottom: 6 },
-//   selectedTags: { flexDirection: "row", flexWrap: "wrap" },
-//   tag: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(76,187,23,0.15)", paddingVertical: 4, paddingHorizontal: 8, borderRadius: 14, margin: 4 },
-//   tagText: { fontSize: 11, color: KELLY_GREEN },
-
-//   removeTagButton: {
-//     marginLeft: 6,
-//     backgroundColor: "#fff",
-//     borderRadius: 10,
-//     width: 18,
-//     height: 18,
-//     alignItems: "center",
-//     justifyContent: "center",
-//     elevation: 1,
-//   },
-
-//   removeTagText: {
-//     color: KELLY_GREEN,
-//     fontWeight: "700",
-//     fontSize: 14,
-//     lineHeight: 14,
-//   },
-
-//   // Save & Next Button - Updated styling
-//   saveButton: {
-//     flexDirection: "row",
-//     alignSelf: "center",
-//     alignItems: "center",
-//     width: width * 0.65,  // Slightly wider for icon + text
-//     backgroundColor: KELLY_GREEN,
-//     paddingVertical: 12,
-//     borderRadius: 25,
-//     justifyContent: "center",
-//     elevation: 5,
-//     marginTop: 20,
-//     marginBottom: 40,
-//   },
-//   saveButtonDisabled: {
-//     opacity: 0.6,
-//   },
-//   saveText: {
-//     color: "#fff",
-//     fontSize: width * 0.04,
-//     fontWeight: "700",
-//     letterSpacing: 0.5,
-//     marginRight: 6,
-//   },
-//   arrowIcon: {
-//     marginLeft: 2,
-//   },
-// });
-
-
+// app/Facilities.tsx
 import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import React, { useState, useEffect } from "react";
 import {
   Dimensions,
@@ -426,8 +15,16 @@ import {
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { useDispatch, useSelector } from "react-redux";
-import { setFacilities, getFacilities, clearError, clearSuccess, updateLocalFacilities } from "../app/reduxStore/reduxSlices/facilitiesSlice";
+import {
+  setFacilities,
+  getFacilities,
+  clearError,
+  clearSuccess,
+  updateLocalFacilities,
+  setActiveHostelFacilities
+} from "../app/reduxStore/reduxSlices/facilitiesSlice";
 import { AppDispatch, RootState } from "../app/reduxStore/store/store";
+import { useAppSelector } from "@/hooks/hooks";
 
 const { width, height } = Dimensions.get("window");
 const KELLY_GREEN = "#4CBB17";
@@ -481,7 +78,7 @@ const REVERSE_FACILITY_MAPPING: Record<string, string> = {
   "North Indian Meals": "north-indian",
 };
 
-// Forward mapping (same as before)
+// Forward mapping
 const FACILITY_MAPPING = {
   // Sharing Types
   "1-sharing": "1 Sharing",
@@ -527,13 +124,26 @@ const FACILITY_MAPPING = {
 
 const FacilitiesScreen = () => {
   const router = useRouter();
+  const params = useLocalSearchParams();
   const dispatch = useDispatch<AppDispatch>();
+
+  // Get hostelId from params or Redux
+  const hostelId = params.hostelId as string || '';
+  const hostelName = params.hostelName as string || '';
+
+  // Get auth state for selected hostel
+  const { selectedHostelId, hostels } = useAppSelector((state) => state.auth);
   const { loading, error, success, facilities } = useSelector((state: RootState) => state.facilities);
+
+  // Determine the actual hostelId to use
+  const actualHostelId = hostelId || selectedHostelId || '';
+  const actualHostel = hostels.find(h => h.hostelId === actualHostelId);
+  const actualHostelName = actualHostel?.hostelName || hostelName;
 
   const [selectedFacilities, setSelectedFacilities] = useState<string[]>([]);
   const [selectedSharing, setSelectedSharing] = useState<string[]>([]);
-  const [foodMenu, setFoodMenu] = useState<string>("");
   const [selectedFoodOptions, setSelectedFoodOptions] = useState<string[]>([]);
+  const [foodMenu, setFoodMenu] = useState<string>("");
   const [isLoaded, setIsLoaded] = useState(false);
 
   const facilitiesList = [
@@ -579,12 +189,33 @@ const FacilitiesScreen = () => {
 
   const categories = [...new Set(facilitiesList.map((f) => f.category))];
 
+  // Check if we have a valid hostelId
+  useEffect(() => {
+    if (!actualHostelId) {
+      Toast.show({
+        type: "error",
+        text1: "No Hostel Selected",
+        text2: "Please select a hostel first from the home screen",
+      });
+
+      // Navigate back if no hostel selected
+      setTimeout(() => {
+        router.back();
+      }, 2000);
+    }
+  }, [actualHostelId]);
+
   // Load existing facilities on component mount
   useEffect(() => {
     const loadExistingFacilities = async () => {
+      if (!actualHostelId) {
+        setIsLoaded(true);
+        return;
+      }
+
       try {
-        console.log("🔄 Loading existing facilities...");
-        await dispatch(getFacilities()).unwrap();
+        console.log("🔄 Loading facilities for hostel:", actualHostelId);
+        await dispatch(getFacilities(actualHostelId)).unwrap();
         setIsLoaded(true);
       } catch (error) {
         console.log("⚠️ No existing facilities or error:", error);
@@ -593,11 +224,11 @@ const FacilitiesScreen = () => {
     };
 
     loadExistingFacilities();
-  }, [dispatch]);
+  }, [dispatch, actualHostelId]);
 
   // Add this function to handle loading custom food menu from existing data
   useEffect(() => {
-    if (facilities && isLoaded) {
+    if (facilities && isLoaded && facilities.hostelId === actualHostelId) {
       console.log("📋 Populating form with existing facilities:", facilities);
 
       // Reset all selections first
@@ -647,7 +278,7 @@ const FacilitiesScreen = () => {
         setFoodMenu(facilities.customFoodMenu);
       }
     }
-  }, [facilities, isLoaded]);
+  }, [facilities, isLoaded, actualHostelId]);
 
   // Handle errors and success messages
   useEffect(() => {
@@ -664,15 +295,21 @@ const FacilitiesScreen = () => {
       Toast.show({
         type: "success",
         text1: "Facilities Saved Successfully ✅",
-        text2: "Your hostel facilities have been updated.",
+        text2: `Facilities updated for ${actualHostelName}`,
       });
       dispatch(clearSuccess());
       // Navigate to summary page after successful update
       setTimeout(() => {
-        router.push("/Summary");
+        router.push({
+          pathname: "/Summary",
+          params: {
+            hostelId: actualHostelId,
+            hostelName: actualHostelName
+          }
+        });
       }, 1500);
     }
-  }, [error, success, dispatch, router]);
+  }, [error, success, dispatch, router, actualHostelId, actualHostelName]);
 
   const toggleFacility = (facilityId: string, category: string) => {
     if (category === "Sharing Type") {
@@ -736,18 +373,29 @@ const FacilitiesScreen = () => {
     });
 
     const apiData = {
+      hostelId: actualHostelId,
       sharingTypes,
       bathroomTypes,
       essentials,
       foodServices,
-      customFoodMenu: foodMenu.trim() || undefined // Custom food menu goes here
+      customFoodMenu: foodMenu.trim() || undefined
     };
 
     console.log("📤 Formatted API Data:", apiData);
     return apiData;
   };
 
+  // In your Facilities.tsx, update the handleSubmit function:
   const handleSubmit = async () => {
+    if (!actualHostelId) {
+      Toast.show({
+        type: "error",
+        text1: "No Hostel Selected",
+        text2: "Please select a hostel first"
+      });
+      return;
+    }
+
     if (selectedSharing.length === 0 && selectedFacilities.length === 0 && selectedFoodOptions.length === 0 && !foodMenu.trim()) {
       Toast.show({
         type: "error",
@@ -759,24 +407,58 @@ const FacilitiesScreen = () => {
 
     try {
       const apiData = formatDataForAPI();
-      console.log("Submitting facilities data:", apiData);
+      console.log("🚀 Submitting facilities data:", {
+        hostelId: actualHostelId,
+        data: apiData,
+        selectedSharingCount: selectedSharing.length,
+        selectedFacilitiesCount: selectedFacilities.length,
+        selectedFoodOptionsCount: selectedFoodOptions.length,
+        foodMenuLength: foodMenu.length
+      });
+
+      // Debug: Log what's being sent
+      console.log("📤 API Payload:", JSON.stringify(apiData, null, 2));
 
       const result = await dispatch(setFacilities(apiData)).unwrap();
 
+      console.log("✅ Submission successful:", result);
+
       if (result.success) {
         // Update local state with new data
-        dispatch(updateLocalFacilities(apiData));
+        dispatch(updateLocalFacilities({
+          hostelId: actualHostelId,
+          ...result.data
+        }));
 
         Toast.show({
           type: "success",
           text1: "Success ✅",
           text2: "Facilities updated successfully!",
         });
-        
-        // Navigation to summary page will be handled by the success useEffect
+
+        // Navigation to summary page
+        setTimeout(() => {
+          router.push({
+            pathname: "/Summary",
+            params: {
+              hostelId: actualHostelId,
+              hostelName: actualHostelName
+            }
+          });
+        }, 1500);
       }
     } catch (error: any) {
-      console.error("Submission error:", error);
+      console.error("❌ Submission error details:", {
+        message: error.message,
+        error: error,
+        stack: error.stack
+      });
+
+      Toast.show({
+        type: "error",
+        text1: "Submission Failed",
+        text2: error.message || "Failed to save facilities. Please try again."
+      });
     }
   };
 
@@ -798,6 +480,24 @@ const FacilitiesScreen = () => {
     );
   }
 
+  if (!actualHostelId) {
+    return (
+      <View style={styles.errorContainer}>
+        <Icon name="alert-circle-outline" size={60} color={KELLY_GREEN} />
+        <Text style={styles.errorTitle}>No Hostel Selected</Text>
+        <Text style={styles.errorText}>
+          Please select a hostel first from the home screen
+        </Text>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Simple Header */}
@@ -805,7 +505,14 @@ const FacilitiesScreen = () => {
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Icon name="arrow-left" size={24} color={KELLY_GREEN} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Facilities</Text>
+        <View style={styles.headerTitleContainer}>
+          <Text style={styles.headerTitle}>Facilities</Text>
+          {actualHostelName && (
+            <Text style={styles.hostelName} numberOfLines={1}>
+              {actualHostelName}
+            </Text>
+          )}
+        </View>
         <View style={styles.headerRightPlaceholder} />
       </View>
 
@@ -817,8 +524,19 @@ const FacilitiesScreen = () => {
         <View style={styles.infoBanner}>
           <Icon name="information-outline" size={20} color="#fff" />
           <Text style={styles.infoText}>
-            {facilities ? "Edit your existing facilities" : "Set up your hostel facilities"}
+            {facilities && facilities.hostelId === actualHostelId
+              ? `Edit facilities for ${actualHostelName}`
+              : `Set up facilities for ${actualHostelName}`}
           </Text>
+        </View>
+
+        {/* Hostel Info Card */}
+        <View style={styles.hostelInfoCard}>
+          <Icon name="home" size={24} color={KELLY_GREEN} />
+          <View style={styles.hostelInfoContent}>
+            <Text style={styles.hostelInfoTitle}>{actualHostelName}</Text>
+            <Text style={styles.hostelInfoId}>ID: {actualHostelId}</Text>
+          </View>
         </View>
 
         {/* Sharing Type Card */}
@@ -1077,7 +795,7 @@ const FacilitiesScreen = () => {
           <TouchableOpacity
             style={[styles.saveButton, (getSelectedCount() === 0 && !foodMenu.trim()) && styles.saveButtonDisabled]}
             onPress={handleSubmit}
-            disabled={loading || (getSelectedCount() === 0 && !foodMenu.trim())}
+            disabled={loading || (getSelectedCount() === 0 && !foodMenu.trim()) || !actualHostelId}
           >
             {loading ? (
               <ActivityIndicator size="small" color="#fff" />
@@ -1085,7 +803,7 @@ const FacilitiesScreen = () => {
               <>
                 <Icon name="check-circle" size={20} color="#fff" />
                 <Text style={styles.saveButtonText}>
-                  Update & Next
+                  {facilities && facilities.hostelId === actualHostelId ? "Update & Next" : "Save & Next"}
                 </Text>
                 <Icon name="arrow-right" size={20} color="#fff" />
               </>
@@ -1124,6 +842,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: KELLY_GREEN,
   },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8fdf8',
+    padding: 20,
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: KELLY_GREEN,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  errorText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 30,
+    lineHeight: 22,
+  },
+  backButton: {
+    backgroundColor: KELLY_GREEN,
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   infoBanner: {
     backgroundColor: KELLY_GREEN,
     padding: 15,
@@ -1138,6 +888,33 @@ const styles = StyleSheet.create({
     fontSize: width * 0.032,
     fontWeight: '500',
     flex: 1,
+  },
+  hostelInfoCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  hostelInfoContent: {
+    marginLeft: 15,
+    flex: 1,
+  },
+  hostelInfoTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  hostelInfoId: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
   },
   container: {
     flex: 1,
@@ -1157,10 +934,20 @@ const styles = StyleSheet.create({
   backBtn: {
     padding: 5,
   },
+  headerTitleContainer: {
+    alignItems: 'center',
+    flex: 1,
+  },
   headerTitle: {
     fontSize: width * 0.042,
     fontWeight: "700",
     color: "#2E7D32",
+    textAlign: "center",
+  },
+  hostelName: {
+    fontSize: width * 0.032,
+    color: "#666",
+    marginTop: 2,
     textAlign: "center",
   },
   headerRightPlaceholder: {

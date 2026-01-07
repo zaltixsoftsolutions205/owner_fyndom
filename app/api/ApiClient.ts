@@ -2,6 +2,55 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BASE_URL } from "./api_urlLink";
+import { Platform, Alert } from "react-native";
+
+// Add Pricing Interfaces
+export interface PricingPayload {
+  hostelId?: string;
+  sharingType: string;
+  durationType: string;
+  price: number;
+}
+
+export interface PricingResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    pricing: any;
+    hostelInfo: {
+      hostelId: string;
+      hostelName: string;
+      hostelType: string;
+    };
+  };
+}
+
+export interface GetPricingResponse {
+  success: boolean;
+  data: {
+    organized: {
+      [key: string]: {
+        label: string;
+        daily: PricingItem;
+        monthly: PricingItem;
+      };
+    };
+    summary: Array<{
+      sharing: string;
+      daily: number;
+      monthly: number;
+    }>;
+    rawData: any[];
+    totalItems: number;
+    hostelId: string;
+  };
+}
+
+export interface PricingItem {
+  price: number;
+  currency: string;
+  isSet: boolean;
+}
 
 class ApiClient {
   private axiosInstance: AxiosInstance;
@@ -14,7 +63,7 @@ class ApiClient {
       headers: {
         "Content-Type": "application/json",
       },
-      timeout: 10000,
+      timeout: 30000, // Increased to 30 seconds
     });
 
     this.setupInterceptors();
@@ -24,10 +73,21 @@ class ApiClient {
     // Request interceptor
     this.axiosInstance.interceptors.request.use(
       async (config) => {
+        console.log('🌐 API Request:', {
+          method: config.method?.toUpperCase(),
+          url: config.url,
+          fullUrl: config.baseURL + config.url,
+          timeout: config.timeout,
+          platform: Platform.OS
+        });
+
         // Skip adding token for auth endpoints
-        const isAuthEndpoint = config.url?.includes('/auth/login') || 
-                              config.url?.includes('/auth/refresh-token');
-        
+        const isAuthEndpoint = config.url?.includes('/auth/login') ||
+          config.url?.includes('/auth/refresh-token') ||
+          config.url?.includes('/auth/forgot-password') ||
+          config.url?.includes('/auth/reset-password') ||
+          config.url?.includes('/auth/verify-otp');
+
         if (!isAuthEndpoint) {
           try {
             const token = await AsyncStorage.getItem("token");
@@ -41,19 +101,42 @@ class ApiClient {
         return config;
       },
       (error) => {
+        console.error('❌ Request interceptor error:', error);
         return Promise.reject(error);
       }
     );
 
-    // Response interceptor - simplified without Redux dependency
+    // Response interceptor
     this.axiosInstance.interceptors.response.use(
       (response) => {
+        console.log('✅ API Response:', {
+          status: response.status,
+          url: response.config.url,
+          success: response.data?.success
+        });
         return response;
       },
       async (error) => {
         const originalRequest = error.config;
 
-        // Handle 401 errors without Redux dependency
+        console.error('❌ API Error:', {
+          message: error.message,
+          code: error.code,
+          url: error.config?.url,
+          baseURL: error.config?.baseURL,
+          status: error.response?.status
+        });
+
+        // Better error messages
+        if (error.code === 'ECONNABORTED') {
+          error.message = 'Request timeout. Please check your internet connection.';
+        } else if (error.message === 'Network Error') {
+          error.message = `Network error. Cannot connect to server at ${BASE_URL}`;
+        } else if (!error.response) {
+          error.message = 'No response from server. Please check if server is running.';
+        }
+
+        // Handle 401 errors
         if (error.response?.status === 401 && !originalRequest._retry) {
           if (this.isRefreshing) {
             return new Promise((resolve, reject) => {
@@ -74,25 +157,21 @@ class ApiClient {
               const refreshResponse = await axios.post(`${BASE_URL}/auth/refresh-token`, {
                 refreshToken,
               });
-              
+
               const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.tokens;
-              
-              // Store new tokens
+
               await AsyncStorage.multiSet([
                 ['token', accessToken],
                 ['refreshToken', newRefreshToken],
               ]);
 
-              // Retry failed requests
               this.failedRequests.forEach(({ resolve }) => resolve());
               this.failedRequests = [];
-              
-              // Update authorization header and retry original request
+
               originalRequest.headers.Authorization = `Bearer ${accessToken}`;
               return this.axiosInstance(originalRequest);
             }
           } catch (refreshError) {
-            // If refresh fails, clear tokens and reject
             this.failedRequests.forEach(({ reject }) => reject(refreshError));
             this.failedRequests = [];
             await AsyncStorage.multiRemove(['token', 'refreshToken', 'user']);
@@ -141,6 +220,37 @@ class ApiClient {
     });
     return response.data;
   }
+
+  // Test connection method
+  async testConnection(): Promise<boolean> {
+    try {
+      const response = await this.axiosInstance.get('/auth/health');
+      console.log('✅ Server connection test passed:', response.data);
+      return true;
+    } catch (error) {
+      console.error('❌ Server connection test failed:', error);
+      return false;
+    }
+  }
+
+  // Add these forgot password methods if not already present
+  async sendForgotPasswordOTP(email: string): Promise<any> {
+    return this.post('/auth/forgot-password', { email });
+  }
+
+  async verifyForgotPasswordOTP(email: string, otp: string): Promise<any> {
+    return this.post('/auth/verify-otp', { email, otp });
+  }
+
+  async resetPasswordWithToken(data: {
+    email: string;
+    resetToken: string;
+    newPassword: string;
+  }): Promise<any> {
+    return this.post('/auth/reset-password', data);
+  }
 }
 
-export default new ApiClient(BASE_URL);
+// Create and export a single instance
+const apiClient = new ApiClient(BASE_URL);
+export default apiClient;

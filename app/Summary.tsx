@@ -1,270 +1,6 @@
-// // app/HostelSummary.tsx
-// import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
-// import { useRouter } from "expo-router";
-// import React, { useState, useEffect } from "react";
-// import {
-//   Dimensions,
-//   SafeAreaView,
-//   StyleSheet,
-//   Text,
-//   TextInput,
-//   TouchableOpacity,
-//   View,
-//   ScrollView,
-//   ActivityIndicator,
-// } from "react-native";
-// import Toast from "react-native-toast-message";
-// import { useDispatch, useSelector } from "react-redux";
-// import { setHostelSummary, getHostelSummary, setSummaryLocal, clearError, clearSuccess } from "../app/reduxStore/reduxSlices/hostelSummarySlice";
-// import { RootState } from "../app/reduxStore/store/store";
-
-// const { width } = Dimensions.get("window"); 
-
-// const FOREST_GREEN = "#228B22";
-// const SAVE_BUTTON_COLOR = "#3ac403ff";
-
-// export default function HostelSummary() {
-//   const [summary, setSummary] = useState("");
-//   const router = useRouter();
-//   const dispatch = useDispatch();
-
-//   // Get state from Redux
-//   const { summary: storedSummary, loading, error, success } = useSelector(
-//     (state: RootState) => state.hostelSummary
-//   );
-
-//   // Load existing summary on component mount
-//   useEffect(() => {
-//     dispatch(getHostelSummary() as any);
-//   }, [dispatch]);
-
-//   // Update local state when stored summary changes
-//   useEffect(() => {
-//     if (storedSummary) {
-//       setSummary(storedSummary);
-//     }
-//   }, [storedSummary]);
-
-//   // Handle errors
-//   useEffect(() => {
-//     if (error) {
-//       showToast("error", error);
-//       dispatch(clearError());
-//     }
-//   }, [error, dispatch]);
-
-//   // Handle success
-//   useEffect(() => {
-//     if (success) {
-//       showToast("success", "Hostel summary saved successfully");
-//       dispatch(clearSuccess());
-//       // Optionally navigate back after success
-//       // setTimeout(() => router.back(), 1500);
-//     }
-//   }, [success, dispatch]);
-
-//   const showToast = (type: "success" | "error" | "info", text1: string, text2?: string) => {
-//     Toast.show({ 
-//       type, 
-//       text1, 
-//       text2,
-//       position: "bottom", 
-//       visibilityTime: 3000 
-//     });
-//   };
-
-//   const handleSaveSummary = () => {
-//     if (summary.trim().length < 10) {
-//       showToast("error", "Summary too short", "Please provide a detailed description (at least 10 characters)");
-//       return;
-//     }
-
-//     if (summary.trim().length > 500) {
-//       showToast("error", "Summary too long", "Please keep summary under 500 characters");
-//       return;
-//     }
-
-//     // Dispatch the action to save summary
-//     dispatch(setHostelSummary(summary) as any);
-//   };
-
-//   const handleSummaryChange = (text: string) => {
-//     setSummary(text);
-//     // Optional: Update local state in Redux for immediate feedback
-//     dispatch(setSummaryLocal(text));
-//   };
-
-//   return (
-//     <SafeAreaView style={styles.safeArea}>
-//       {/* Back Button */}
-//       <TouchableOpacity
-//         style={styles.backBtn}
-//         onPress={() => router.back()}
-//         activeOpacity={0.7}
-//       >
-//         <Icon name="arrow-left" size={30} color={FOREST_GREEN} />
-//       </TouchableOpacity>
-
-//       <ScrollView contentContainerStyle={styles.contentContainer}>
-//         {/* Header Section */}
-//         <View style={styles.headerZone}>
-//           <Icon
-//             name="home-city"
-//             size={52}
-//             color={FOREST_GREEN}
-//             style={{ marginBottom: 10 }}
-//           />
-//           <Text style={styles.header}>Write Hostel Summary</Text>
-//           <Text style={styles.subHeader}>
-//             Provide a concise and appealing description of your hostel to attract
-//             potential residents.
-//           </Text>
-//           <Text style={styles.subPoints}>
-//             - Highlight your hostel's unique features{"\n"}
-//             - Mention location and amenities{"\n"}
-//             - Keep it engaging and informative
-//           </Text>
-
-//           {/* Summary Input Box */}
-//           <TextInput
-//             multiline
-//             placeholder="Write your hostel summary here... Example: Welcome to our premium hostel! We offer comfortable accommodation with all modern amenities including free WiFi, 24/7 security, delicious food, and a friendly environment. Located in the heart of the city with easy access to colleges and transportation."
-//             style={styles.textInput}
-//             value={summary}
-//             onChangeText={handleSummaryChange}
-//             textAlignVertical="top"
-//             maxLength={500}
-//             numberOfLines={6}
-//             editable={!loading}
-//           />
-//           <Text style={styles.charCount}>{summary.length} / 500</Text>
-
-//           {/* Loading Indicator */}
-//           {loading && (
-//             <View style={styles.loadingContainer}>
-//               <ActivityIndicator size="large" color={FOREST_GREEN} />
-//               <Text style={styles.loadingText}>Saving summary...</Text>
-//             </View>
-//           )}
-//         </View>
-//       </ScrollView>
-
-//       {/* Save Button fixed at bottom */}
-//       <TouchableOpacity
-//         style={[
-//           styles.saveButton, 
-//           { 
-//             backgroundColor: loading ? "#ccc" : SAVE_BUTTON_COLOR,
-//             opacity: loading ? 0.7 : 1
-//           }
-//         ]}
-//         onPress={handleSaveSummary}
-//         disabled={loading}
-//       >
-//         {loading ? (
-//           <ActivityIndicator size="small" color="#fff" />
-//         ) : (
-//           <Text style={styles.saveText}>Save Summary</Text>
-//         )}
-//       </TouchableOpacity>
-
-//       <Toast />
-//     </SafeAreaView>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   safeArea: { flex: 1, backgroundColor: "#fff" },
-//   backBtn: {
-//     position: "absolute",
-//     top: 38,
-//     left: 18,
-//     zIndex: 10,
-//   },
-//   contentContainer: {
-//     paddingTop: 70,
-//     paddingHorizontal: 24,
-//     paddingBottom: 120, // Extra space so content not hidden behind button
-//   },
-//   headerZone: {
-//     alignItems: "center",
-//   },
-//   header: {
-//     fontSize: width * 0.058,
-//     fontWeight: "900",
-//     color: FOREST_GREEN,
-//     textAlign: "center",
-//   },
-//   subHeader: {
-//     fontSize: width * 0.042,
-//     color: "#444",
-//     textAlign: "center",
-//     marginTop: 6,
-//     paddingHorizontal: 6,
-//     fontWeight: "500",
-//     marginBottom: 4,
-//     lineHeight: 22,
-//   },
-//   subPoints: {
-//     fontSize: width * 0.036,
-//     color: "#FFD700",
-//     textAlign: "left",
-//     marginTop: 8,
-//     opacity: 0.95,
-//     fontWeight: "700",
-//     alignSelf: "flex-start",
-//     marginBottom: 12,
-//   },
-//   textInput: {
-//     fontSize: width * 0.042,
-//     minHeight: 130,
-//     borderWidth: 1,
-//     borderColor: "#ccc",
-//     borderRadius: 12,
-//     backgroundColor: "#fafafa",
-//     padding: 12,
-//     color: "#333",
-//     width: "100%",
-//     marginBottom: 4,
-//   },
-//   charCount: {
-//     alignSelf: "flex-end",
-//     fontSize: 13,
-//     color: "#999",
-//     marginBottom: 20,
-//   },
-//   saveButton: {
-//     position: "absolute",
-//     bottom: 44,
-//     alignSelf: "center",
-//     width: width * 0.55,
-//     borderRadius: 40,
-//     elevation: 10,
-//     shadowColor: "#69d609ff",
-//     alignItems: "center",
-//     justifyContent: "center",
-//     paddingVertical: 15,
-//   },
-//   saveText: {
-//     color: "#fff",
-//     fontSize: width * 0.045,
-//     fontWeight: "800",
-//     letterSpacing: 1,
-//   },
-//   loadingContainer: {
-//     alignItems: "center",
-//     marginTop: 10,
-//   },
-//   loadingText: {
-//     marginTop: 8,
-//     color: FOREST_GREEN,
-//     fontSize: 14,
-//   },
-// });
-
-// app/HostelSummary.tsx
+// app/Summary.tsx - Complete updated version
 import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import React, { useState, useEffect } from "react";
 import {
   Dimensions,
@@ -276,10 +12,18 @@ import {
   TouchableOpacity,
   View,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import Toast from "react-native-toast-message";
 import { useDispatch, useSelector } from "react-redux";
-import { setHostelSummary, getHostelSummary, setSummaryLocal, clearError, clearSuccess } from "../app/reduxStore/reduxSlices/hostelSummarySlice";
+import { 
+  setHostelSummary, 
+  getHostelSummary, 
+  setSummaryLocal, 
+  clearError, 
+  clearSuccess,
+  clearSummary 
+} from "../app/reduxStore/reduxSlices/hostelSummarySlice";
 import { RootState } from "../app/reduxStore/store/store";
 
 const { width, height } = Dimensions.get("window");
@@ -292,40 +36,89 @@ export default function HostelSummary() {
   const [summary, setSummary] = useState("");
   const router = useRouter();
   const dispatch = useDispatch();
-
+  const params = useLocalSearchParams();
+  
+  // Get hostelId from params or use selected hostel
+  const hostelId = params.hostelId as string;
+  const hostelName = params.hostelName as string;
+  
   // Get state from Redux
-  const { summary: storedSummary, loading, error, success } = useSelector(
-    (state: RootState) => state.hostelSummary
-  );
+  const { 
+    summary: storedSummary, 
+    loading, 
+    error, 
+    success,
+    currentHostelId 
+  } = useSelector((state: RootState) => state.hostelSummary);
+  
+  // Get auth state for selected hostel
+  const { selectedHostelId, hostels } = useSelector((state: RootState) => state.auth);
+  
+  // Determine the hostel to use
+  const effectiveHostelId = hostelId || selectedHostelId;
+  const effectiveHostelName = hostelName || 
+    hostels.find(h => h.hostelId === effectiveHostelId)?.hostelName || 
+    "Selected Hostel";
 
   // Load existing summary on component mount
   useEffect(() => {
-    dispatch(getHostelSummary() as any);
-  }, [dispatch]);
+    if (effectiveHostelId) {
+      console.log("📥 Loading summary for hostel:", effectiveHostelId);
+      dispatch(getHostelSummary(effectiveHostelId) as any);
+    } else {
+      Alert.alert(
+        "No Hostel Selected",
+        "Please select a hostel first",
+        [{ 
+          text: "OK", 
+          onPress: () => router.back() 
+        }]
+      );
+    }
+    
+    // Clear state when component unmounts
+    return () => {
+      dispatch(clearSummary());
+    };
+  }, [dispatch, effectiveHostelId]);
 
   // Update local state when stored summary changes
   useEffect(() => {
-    if (storedSummary) {
+    if (storedSummary && currentHostelId === effectiveHostelId) {
       setSummary(storedSummary);
+    } else if (!storedSummary && effectiveHostelId) {
+      setSummary("");
     }
-  }, [storedSummary]);
+  }, [storedSummary, currentHostelId, effectiveHostelId]);
 
   // Handle errors
   useEffect(() => {
     if (error) {
-      showToast("error", error);
+      showToast("error", "Error", error);
       dispatch(clearError());
     }
   }, [error, dispatch]);
 
-  // Handle success - redirect to BankDetails
+  // Handle success
   useEffect(() => {
     if (success) {
-      showToast("success", "Hostel summary saved successfully");
-      dispatch(clearSuccess());
-      router.push("/BankDetailsPage");
+      showToast("success", "Success", "Hostel summary saved successfully!");
+      
+      // Auto-navigate to Bank Details after 1.5 seconds
+      const timer = setTimeout(() => {
+        dispatch(clearSuccess());
+        router.push({
+          pathname: "/BankDetailsPage",
+          params: {
+            hostelId: effectiveHostelId,
+            hostelName: effectiveHostelName
+          }
+        });
+      }, 1500);
+      
+      return () => clearTimeout(timer);
     }
-  }, [success, dispatch, router]);
+  }, [success, dispatch, router, effectiveHostelId, effectiveHostelName]);
 
   const showToast = (type: "success" | "error" | "info", text1: string, text2?: string) => {
     Toast.show({ 
@@ -338,6 +131,11 @@ export default function HostelSummary() {
   };
 
   const handleSaveSummary = () => {
+    if (!effectiveHostelId) {
+      showToast("error", "Error", "No hostel selected");
+      return;
+    }
+
     if (summary.trim().length < 10) {
       showToast("error", "Summary too short", "Please provide a detailed description (at least 10 characters)");
       return;
@@ -349,29 +147,55 @@ export default function HostelSummary() {
     }
 
     // Dispatch the action to save summary
-    dispatch(setHostelSummary(summary) as any);
+    dispatch(setHostelSummary({ 
+      hostelId: effectiveHostelId, 
+      summary: summary.trim() 
+    }) as any);
   };
 
   const handleSummaryChange = (text: string) => {
     setSummary(text);
-    // Optional: Update local state in Redux for immediate feedback
+    // Update local state in Redux for immediate feedback
     dispatch(setSummaryLocal(text));
+  };
+
+  const handleBack = () => {
+    if (summary && !success) {
+      Alert.alert(
+        "Unsaved Changes",
+        "You have unsaved changes. Are you sure you want to go back?",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Discard", style: "destructive", onPress: () => router.back() }
+        ]
+      );
+    } else {
+      router.back();
+    }
   };
 
   return (
     <View style={styles.container}>
       {/* Simple Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
           <Icon name="arrow-left" size={28} color={KELLY_GREEN} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hostel Summary</Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Hostel Summary</Text>
+          {effectiveHostelName && (
+            <Text style={styles.hostelNameText} numberOfLines={1}>
+              {effectiveHostelName}
+            </Text>
+          )}
+        </View>
         <View style={styles.headerRightPlaceholder} />
       </View>
 
       <ScrollView 
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Concise Header */}
         <View style={styles.headerContainer}>
@@ -381,6 +205,20 @@ export default function HostelSummary() {
             Create an appealing summary to attract residents
           </Text>
         </View>
+
+        {/* Hostel Info Card */}
+        {effectiveHostelId && (
+          <View style={styles.hostelInfoCard}>
+            <Icon name="home" size={20} color={DARK_GREEN} />
+            <View style={styles.hostelInfoText}>
+              <Text style={styles.hostelInfoTitle}>Hostel Information</Text>
+              <Text style={styles.hostelInfoDetail}>ID: {effectiveHostelId}</Text>
+              {effectiveHostelName && (
+                <Text style={styles.hostelInfoDetail}>Name: {effectiveHostelName}</Text>
+              )}
+            </View>
+          </View>
+        )}
 
         {/* Summary Card */}
         <View style={styles.card}>
@@ -427,17 +265,30 @@ export default function HostelSummary() {
           {loading && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={KELLY_GREEN} />
-              <Text style={styles.loadingText}>Saving...</Text>
+              <Text style={styles.loadingText}>
+                {summary ? "Saving..." : "Loading..."}
+              </Text>
             </View>
           )}
+        </View>
+
+        {/* Example Summaries */}
+        <View style={styles.examplesCard}>
+          <Text style={styles.examplesTitle}>Example Summaries:</Text>
+          <Text style={styles.exampleText}>
+            1. "Modern boys hostel near university campus with AC rooms, high-speed WiFi, 24/7 security, healthy meals, and laundry service."
+          </Text>
+          <Text style={styles.exampleText}>
+            2. "Girls hostel with homely atmosphere, study room, gym, indoor games, CCTV surveillance, and regular cultural activities."
+          </Text>
         </View>
 
         {/* Action Buttons */}
         <View style={styles.bottomButtonsRow}>
           <TouchableOpacity
-            style={[styles.nextButton, loading && { opacity: 0.5 }]}
+            style={[styles.nextButton, (loading || !effectiveHostelId) && { opacity: 0.5 }]}
             onPress={handleSaveSummary}
-            disabled={loading}
+            disabled={loading || !effectiveHostelId}
           >
             {loading ? (
               <ActivityIndicator size="small" color="#fff" />
@@ -454,7 +305,7 @@ export default function HostelSummary() {
         <View style={styles.helpCard}>
           <Icon name="check-circle" size={20} color={KELLY_GREEN} />
           <Text style={styles.helpText}>
-            A good summary helps attract more residents. Be descriptive about facilities, location, and special features.
+            A good summary helps attract more residents. Be descriptive about facilities, location, and special features. Include nearby landmarks and transportation options.
           </Text>
         </View>
       </ScrollView>
@@ -483,11 +334,22 @@ const styles = StyleSheet.create({
   backBtn: {
     padding: 5,
   },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 10,
+  },
   headerTitle: {
     fontSize: width * 0.05,
     fontWeight: "700",
     color: DARK_GREEN,
     textAlign: "center",
+  },
+  hostelNameText: {
+    fontSize: width * 0.035,
+    color: "#666",
+    textAlign: "center",
+    marginTop: 2,
   },
   headerRightPlaceholder: {
     width: 28,
@@ -499,7 +361,7 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: 20,
     marginTop: 8
   },
   headerText: {
@@ -515,6 +377,31 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 30,
     lineHeight: 20,
+  },
+  hostelInfoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: LIGHT_GREEN,
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: KELLY_GREEN,
+  },
+  hostelInfoText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  hostelInfoTitle: {
+    fontSize: width * 0.04,
+    fontWeight: '600',
+    color: DARK_GREEN,
+    marginBottom: 4,
+  },
+  hostelInfoDetail: {
+    fontSize: width * 0.033,
+    color: "#555",
+    lineHeight: 18,
   },
   card: {
     backgroundColor: "#fff",
@@ -593,6 +480,27 @@ const styles = StyleSheet.create({
     fontSize: width * 0.035,
     color: KELLY_GREEN,
     fontWeight: '500',
+  },
+  examplesCard: {
+    backgroundColor: '#F0F8FF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#D0E8FF',
+  },
+  examplesTitle: {
+    fontSize: width * 0.04,
+    fontWeight: '600',
+    color: DARK_GREEN,
+    marginBottom: 10,
+  },
+  exampleText: {
+    fontSize: width * 0.033,
+    color: '#555',
+    lineHeight: 18,
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
   bottomButtonsRow: {
     flexDirection: "row",

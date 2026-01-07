@@ -19,29 +19,87 @@ interface BankDetails {
   isVerified: boolean;
 }
 
+interface HostelDocument {
+  _id: string;
+  filename: string;
+  originalName: string;
+  url: string;
+  uploadDate: string;
+}
+
+interface Hostel {
+  hostelId: string;
+  _id: string;
+  hostelName: string;
+  hostelType: string;
+  govtRegistrationId: string;
+  fullAddress: string;
+  status: string;
+  isActive: boolean;
+  rejectionReason?: string;
+  createdAt: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  documents: HostelDocument[];
+}
+
+interface ActiveHostel {
+  hostelId: string;
+  hostelName: string;
+  hostelType: string;
+}
+
 interface User {
   _id: string;
   fullName: string;
   email: string;
   mobileNumber: string;
-  hostelName: string;
+  hostelName?: string;
   role?: string;
   bankDetails?: BankDetails;
-  // Add other user properties as needed
+  hostels?: Hostel[];
+  activeHostel?: ActiveHostel;
+  isActive?: boolean;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  ownerId?: string;
+  mobile?: string;
+  hostelsSummary?: {
+    total: number;
+    approved: number;
+    pending: number;
+    rejected: number;
+  };
+  profile?: {
+    totalHostels: number;
+    maxHostels: number;
+    profileComplete: boolean;
+  };
+  activeSince?: string;
 }
 
 interface Tokens {
   accessToken: string;
   refreshToken: string;
   expiresIn: string;
+  tokenType?: string;
+}
+
+interface LoginResponseData {
+  tokens: Tokens;
+  user: User;
+  role: string;
+  permissions?: string[];
 }
 
 interface LoginResponse {
   success: boolean;
   message: string;
-  tokens: Tokens;
-  user: User;
-  role: string;
+  data?: LoginResponseData;
+  tokens?: Tokens;
+  user?: User;
+  role?: string;
 }
 
 interface RefreshTokenResponse {
@@ -70,6 +128,8 @@ interface AuthState {
   isAuthenticated: boolean;
   isInitialized: boolean;
   fullName: string | null;
+  hostels: Hostel[];
+  selectedHostelId: string | null;
 }
 
 const initialState: AuthState = {
@@ -82,11 +142,66 @@ const initialState: AuthState = {
   role: null,
   isAuthenticated: false,
   isInitialized: false,
-  fullName: null
+  fullName: null,
+  hostels: [],
+  selectedHostelId: null
+};
+
+// Helper function to get selected hostel ID from storage
+const getSelectedHostelIdFromStorage = async (): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem('selectedHostelId');
+  } catch (error) {
+    console.error('Error getting selected hostel from storage:', error);
+    return null;
+  }
+};
+
+// Helper function to set selected hostel ID in storage
+const setSelectedHostelIdInStorage = async (hostelId: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem('selectedHostelId', hostelId);
+  } catch (error) {
+    console.error('Error setting selected hostel in storage:', error);
+  }
+};
+
+// Helper function to save auth data to storage
+const saveAuthDataToStorage = async (
+  token: string, 
+  refreshToken: string, 
+  user: User,
+  selectedHostelId?: string
+): Promise<void> => {
+  try {
+    const items: [string, string][] = [
+      ['token', token],
+      ['refreshToken', refreshToken],
+      ['user', JSON.stringify(user)],
+    ];
+    
+    if (selectedHostelId) {
+      items.push(['selectedHostelId', selectedHostelId]);
+    }
+    
+    await AsyncStorage.multiSet(items);
+    console.log('💾 Auth data saved to storage');
+  } catch (error) {
+    console.error('Error saving auth data to storage:', error);
+  }
+};
+
+// Helper function to clear auth data from storage
+const clearAuthDataFromStorage = async (): Promise<void> => {
+  try {
+    await AsyncStorage.multiRemove(['token', 'refreshToken', 'user', 'selectedHostelId']);
+    console.log('🗑️ Auth data cleared from storage');
+  } catch (error) {
+    console.error('Error clearing auth data from storage:', error);
+  }
 };
 
 // Login thunk
-// inside authSlice.tsx — replace existing login thunk
 export const login = createAsyncThunk<
   LoginResponse,
   LoginData,
@@ -98,7 +213,6 @@ export const login = createAsyncThunk<
       console.log("🔐 Attempting login with:", data.email);
       const response = await ApiClient.post<LoginResponse>("/auth/login", data);
 
-      // IMPORTANT: server should return { success: boolean, ... }
       if (!response || response.success === false) {
         const message = (response && (response as any).message) || "Invalid credentials";
         console.log("❌ Login api returned success:false ->", message);
@@ -124,31 +238,26 @@ export const login = createAsyncThunk<
   }
 );
 
-
 // Refresh token thunk
 export const refreshToken = createAsyncThunk<
-  RefreshTokenResponse, // Return type
-  void, // No argument type
-  { rejectValue: string } // Reject value type
+  RefreshTokenResponse,
+  void,
+  { rejectValue: string }
 >(
   "auth/refreshToken",
   async (_, { rejectWithValue }) => {
     try {
-
-      console.log("this is calling from refresh token");
+      console.log("🔄 Attempting token refresh");
       
       const refreshToken = await AsyncStorage.getItem("refreshToken");
       if (!refreshToken) {
         throw new Error("No refresh token available");
       }
 
-      console.log('🔄 Attempting token refresh');
       const response = await ApiClient.post<RefreshTokenResponse>("/auth/refresh-token", {
         refreshToken,
       });
       console.log('✅ Token refresh successful');
-
-      console.log("reponse from refresh token");
       
       return response;
     } catch (error: any) {
@@ -166,40 +275,44 @@ export const refreshToken = createAsyncThunk<
 
 // Initialize auth from storage
 export const initializeAuth = createAsyncThunk<
-  InitializeAuthPayload | null, // Return type
-  void, // No argument type
-  { rejectValue: string } // Reject value type
+  InitializeAuthPayload & { selectedHostelId?: string },
+  void,
+  { rejectValue: string }
 >(
   "auth/initialize",
   async (_, { rejectWithValue }) => {
     try {
       console.log('🔄 Initializing auth from storage...');
 
-      const [token, refreshToken, user] = await Promise.all([
+      const [token, refreshToken, user, selectedHostelId] = await Promise.all([
         AsyncStorage.getItem("token"),
         AsyncStorage.getItem("refreshToken"),
         AsyncStorage.getItem("user"),
+        getSelectedHostelIdFromStorage(),
       ]);
 
       console.log('📦 Retrieved from storage:', {
         token: token ? 'Present' : 'Missing',
         refreshToken: refreshToken ? 'Present' : 'Missing',
-        user: user ? 'Present' : 'Missing'
+        user: user ? 'Present' : 'Missing',
+        selectedHostelId: selectedHostelId ? 'Present' : 'Missing'
       });
 
       if (token && refreshToken && user) {
         const userData: User = JSON.parse(user);
         console.log('✅ Restoring authenticated state');
+        
         return {
           token,
           refreshToken,
           user: userData,
           role: userData?.role || 'hostelOwner',
+          selectedHostelId: selectedHostelId || undefined,
         };
       }
 
       console.log('ℹ️ No stored auth data found');
-      return null;
+      throw new Error("No stored auth data");
     } catch (error) {
       console.log('❌ Error initializing auth:', error);
       return rejectWithValue("Failed to initialize auth");
@@ -212,21 +325,39 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     logout: (state) => {
-      state.user = null;
-      state.token = null;
-      state.refreshToken = null;
-      state.error = null;
-      state.userId = null;
-      state.role = null;
-      state.isAuthenticated = false;
-      state.isInitialized = true;
-
-      // Clear AsyncStorage
-      AsyncStorage.multiRemove(['token', 'refreshToken', 'user']);
-      console.log('🚪 User logged out - storage cleared');
+      // Clear state
+      Object.assign(state, {
+        ...initialState,
+        isInitialized: true,
+      });
+      
+      // Clear storage (fire and forget)
+      clearAuthDataFromStorage();
     },
     clearError: (state) => {
       state.error = null;
+    },
+    selectHostel: (state, action: PayloadAction<string>) => {
+      state.selectedHostelId = action.payload;
+      // Save to storage (fire and forget)
+      setSelectedHostelIdInStorage(action.payload);
+    },
+    updateHostels: (state, action: PayloadAction<Hostel[]>) => {
+      state.hostels = action.payload;
+      // If no hostel is selected and we have hostels, select the first one
+      if (!state.selectedHostelId && action.payload.length > 0) {
+        state.selectedHostelId = action.payload[0].hostelId;
+        setSelectedHostelIdInStorage(action.payload[0].hostelId);
+      }
+    },
+    updateUser: (state, action: PayloadAction<Partial<User>>) => {
+      if (state.user) {
+        state.user = { ...state.user, ...action.payload };
+        // Update storage (fire and forget)
+        if (state.token && state.refreshToken) {
+          saveAuthDataToStorage(state.token, state.refreshToken, state.user, state.selectedHostelId || undefined);
+        }
+      }
     },
   },
   extraReducers: (builder) => {
@@ -238,10 +369,30 @@ const authSlice = createSlice({
       })
       .addCase(login.fulfilled, (state, action: PayloadAction<LoginResponse>) => {
         state.loading = false;
-        const { user, tokens, role } = action.payload;
+        
+        // Handle both response formats
+        let user: User;
+        let tokens: Tokens;
+        let role: string;
+        let hostels: Hostel[] = [];
 
-        console.log("✅ Login successful, storing tokens and user data");
+        if (action.payload.data) {
+          // New format: response.data contains everything
+          user = action.payload.data.user;
+          tokens = action.payload.data.tokens;
+          role = action.payload.data.role;
+          hostels = action.payload.data.user.hostels || [];
+        } else {
+          // Old format: direct properties
+          user = action.payload.user!;
+          tokens = action.payload.tokens!;
+          role = action.payload.role!;
+          hostels = action.payload.user?.hostels || [];
+        }
 
+        console.log("✅ Login successful");
+
+        // Update state
         state.user = user;
         state.token = tokens.accessToken;
         state.refreshToken = tokens.refreshToken;
@@ -250,25 +401,27 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
         state.isInitialized = true;
         state.fullName = user?.fullName || "owner";
-
-        // Store tokens + user
-        if (tokens.accessToken && tokens.refreshToken) {
-          AsyncStorage.multiSet([
-            ["token", tokens.accessToken],
-            ["refreshToken", tokens.refreshToken],
-            ["user", JSON.stringify(user)],
-          ])
-            .then(() => {
-              console.log("💾 All auth data stored in AsyncStorage");
-            })
-            .catch((error) => {
-              console.error("❌ Error storing auth data:", error);
-            });
+        state.hostels = hostels;
+        
+        // Determine selected hostel
+        let selectedHostelId: string | null = null;
+        if (hostels.length > 0) {
+          const activeHostelId = user.activeHostel?.hostelId;
+          selectedHostelId = activeHostelId || hostels[0].hostelId;
+          state.selectedHostelId = selectedHostelId;
         }
 
-        // Important: set bank status based on user.bankDetails
+        // Save to storage (fire and forget)
+        saveAuthDataToStorage(
+          tokens.accessToken, 
+          tokens.refreshToken, 
+          user, 
+          selectedHostelId || undefined
+        );
+
+        // Set bank status
         try {
-          const bd = (user as any)?.bankDetails;
+          const bd = user?.bankDetails;
           const hasBank =
             bd &&
             (bd.accountNumber || bd.ifscCode || bd.accountHolderName) &&
@@ -295,86 +448,99 @@ const authSlice = createSlice({
 
       // Refresh token cases
       .addCase(refreshToken.fulfilled, (state, action: PayloadAction<RefreshTokenResponse>) => {
-        const { tokens } = action.payload;
+        const { tokens, user } = action.payload;
+        
+        // Update state
         state.token = tokens.accessToken;
         state.refreshToken = tokens.refreshToken;
+        state.user = user;
+        state.hostels = user?.hostels || [];
 
         console.log('🔄 Token refreshed successfully');
 
-        // Update tokens in AsyncStorage
-        AsyncStorage.multiSet([
-          ['token', tokens.accessToken],
-          ['refreshToken', tokens.refreshToken],
-        ]).then(() => {
-          console.log('💾 Updated tokens stored in AsyncStorage');
-        });
+        // Update storage (fire and forget)
+        saveAuthDataToStorage(
+          tokens.accessToken, 
+          tokens.refreshToken, 
+          user, 
+          state.selectedHostelId || undefined
+        );
       })
       .addCase(refreshToken.rejected, (state, action) => {
-        // If refresh fails, logout user
         console.log('❌ Token refresh failed, logging out:', action.payload);
-        state.user = null;
-        state.token = null;
-        state.refreshToken = null;
-        state.isAuthenticated = false;
-        state.role = null;
-        state.userId = null;
-        state.isInitialized = true;
+        
+        // Clear state
+        Object.assign(state, {
+          ...initialState,
+          isInitialized: true,
+          error: action.payload as string,
+        });
 
-        AsyncStorage.multiRemove(['token', 'refreshToken', 'user']);
+        // Clear storage (fire and forget)
+        clearAuthDataFromStorage();
       })
 
       // Initialize auth cases
       .addCase(initializeAuth.pending, (state) => {
         state.loading = true;
       })
-      .addCase(initializeAuth.fulfilled, (state, action: PayloadAction<InitializeAuthPayload | null>) => {
+      .addCase(initializeAuth.fulfilled, (state, action) => {
         state.loading = false;
         state.isInitialized = true;
 
-        if (action.payload) {
-          const { token, refreshToken, user, role } = action.payload;
-          state.token = token;
-          state.refreshToken = refreshToken;
-          state.user = user;
-          state.userId = user?._id || null;
-          state.role = role;
-          state.isAuthenticated = true;
-          console.log("✅ Auth initialized from storage - User is authenticated");
+        const { token, refreshToken, user, role, selectedHostelId } = action.payload;
+        
+        // Update state
+        state.token = token;
+        state.refreshToken = refreshToken;
+        state.user = user;
+        state.userId = user?._id || null;
+        state.role = role;
+        state.isAuthenticated = true;
+        state.hostels = user?.hostels || [];
+        
+        // Handle selected hostel
+        if (selectedHostelId && state.hostels.some(h => h.hostelId === selectedHostelId)) {
+          state.selectedHostelId = selectedHostelId;
+        } else if (state.hostels.length > 0) {
+          // Select the first hostel by default
+          state.selectedHostelId = state.hostels[0].hostelId;
+          // Save to storage (fire and forget)
+          setSelectedHostelIdInStorage(state.hostels[0].hostelId);
+        }
 
-          // Determine bank status from stored user
-          try {
-            const bd = (user as any)?.bankDetails;
-            const hasBank =
-              bd &&
-              (bd.accountNumber || bd.ifscCode || bd.accountHolderName) &&
-              (bd.isVerified === true || bd.isVerified === "true");
-            if (hasBank) {
-              setBankStatusCompleted();
-              console.log("🏦 Bank status set to completed (init)");
-            } else {
-              setBankStatusPending();
-              console.log("🏦 Bank status set to pending (init)");
-            }
-          } catch (e) {
-            console.warn("Error checking bank status on init", e);
+        console.log("✅ Auth initialized from storage - User is authenticated");
+
+        // Set bank status
+        try {
+          const bd = user?.bankDetails;
+          const hasBank =
+            bd &&
+            (bd.accountNumber || bd.ifscCode || bd.accountHolderName) &&
+            (bd.isVerified === true || bd.isVerified === "true");
+          if (hasBank) {
+            setBankStatusCompleted();
+            console.log("🏦 Bank status set to completed (init)");
+          } else {
             setBankStatusPending();
+            console.log("🏦 Bank status set to pending (init)");
           }
-        } else {
-          state.isAuthenticated = false;
-          console.log("✅ Auth initialized - No user data found");
-          // ensure bank status pending/cleared for non-authenticated users
+        } catch (e) {
+          console.warn("Error checking bank status on init", e);
           setBankStatusPending();
         }
       })
-
       .addCase(initializeAuth.rejected, (state, action) => {
         state.loading = false;
         state.isInitialized = true;
         state.isAuthenticated = false;
+        state.hostels = [];
+        state.selectedHostelId = null;
+        state.error = action.payload as string;
         console.log('❌ Auth initialization failed:', action.payload);
       });
   },
 });
 
-export const { logout, clearError } = authSlice.actions;
+export const { logout, clearError, selectHostel, updateHostels, updateUser } = authSlice.actions;
 export default authSlice.reducer;

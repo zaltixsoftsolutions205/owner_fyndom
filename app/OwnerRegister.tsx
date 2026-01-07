@@ -34,175 +34,308 @@ const TEXT_GRAY = "#555555";
 // Image extensions for preview
 const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'];
 
+// Hostel Types
+const HOSTEL_TYPES = [
+  { value: "boys", label: "Boys Hostel", icon: "👨‍🎓" },
+  { value: "girls", label: "Girls Hostel", icon: "👩‍🎓" },
+  { value: "co-living", label: "Co-Living", icon: "👥" }
+];
+
+// Number of hostels options
+const HOSTEL_COUNT_OPTIONS = Array.from({ length: 10 }, (_, i) => ({
+  value: i + 1,
+  label: `${i + 1} Hostel${i > 0 ? 's' : ''}`
+}));
+
+// Single Hostel Interface
+interface Hostel {
+  id: number;
+  hostelName: string;
+  hostelType: string;
+  govtRegistrationId: string;
+  fullAddress: string;
+  documents: Array<{
+    name: string;
+    uri: string;
+    type: string;
+  }>;
+  errors: {
+    hostelName?: string;
+    hostelType?: string;
+    govtRegistrationId?: string;
+    fullAddress?: string;
+    documents?: string;
+  };
+}
+
 export default function HostelOwnerRegistration() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [alreadyVerified, setAlreadyVerified] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [formData, setFormData] = useState({
+
+  // Owner Information
+  const [ownerInfo, setOwnerInfo] = useState({
     fullName: "",
-    hostelName: "",
     email: "",
     mobileNumber: "",
-    govtRegistrationId: "",
-    fullAddress: "",
-    hostelType: "co-living"
   });
 
-  // Add hostel type options
-  const hostelTypes = [
-    { value: "boys", label: "Boys Hostel", icon: "👨‍🎓" },
-    { value: "girls", label: "Girls Hostel", icon: "👩‍🎓" }, 
-    { value: "co-living", label: "Co-Living", icon: "👥" }
-  ];
+  // Number of hostels to register
+  const [numberOfHostels, setNumberOfHostels] = useState(1);
+
+  // Hostels array
+  const [hostels, setHostels] = useState<Hostel[]>([
+    {
+      id: 1,
+      hostelName: "",
+      hostelType: "co-living",
+      govtRegistrationId: "",
+      fullAddress: "",
+      documents: [],
+      errors: {}
+    }
+  ]);
 
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [uploadedFiles, setUploadedFiles] = useState<Array<{ name: string; uri: string; type: string }>>([]);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewUri, setPreviewUri] = useState("");
-  const [emailExistsModal, setEmailExistsModal] = useState(false); // NEW: Modal state
-  const [apiError, setApiError] = useState(""); // NEW: Store API error message
+  const [emailExistsModal, setEmailExistsModal] = useState(false);
+  const [apiError, setApiError] = useState("");
+  const [currentHostelIndex, setCurrentHostelIndex] = useState(0);
 
   // ✅ Enhanced form validation
   const validateForm = () => {
     let newErrors: { [key: string]: string } = {};
-    
-    // Full Name validation
-    if (!formData.fullName.trim()) {
+    let hostelErrors = [...hostels];
+
+    // Owner Information validation
+    if (!ownerInfo.fullName.trim()) {
       newErrors.fullName = "Full name is required";
-    } else if (formData.fullName.trim().length < 3) {
+    } else if (ownerInfo.fullName.trim().length < 3) {
       newErrors.fullName = "Full name must be at least 3 characters";
-    } else if (formData.fullName.trim().length > 50) {
+    } else if (ownerInfo.fullName.trim().length > 50) {
       newErrors.fullName = "Full name cannot exceed 50 characters";
     }
 
-    // Hostel Name validation
-    if (!formData.hostelName.trim()) {
-      newErrors.hostelName = "Hostel name is required";
-    } else if (formData.hostelName.trim().length < 3) {
-      newErrors.hostelName = "Hostel name must be at least 3 characters";
-    } else if (formData.hostelName.trim().length > 100) {
-      newErrors.hostelName = "Hostel name cannot exceed 100 characters";
-    }
-
-    // Email validation
-    if (!formData.email.trim()) {
+    if (!ownerInfo.email.trim()) {
       newErrors.email = "Email is required";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerInfo.email)) {
       newErrors.email = "Please enter a valid email address";
-    } else if (formData.email.length > 100) {
+    } else if (ownerInfo.email.length > 100) {
       newErrors.email = "Email cannot exceed 100 characters";
     }
 
-    // Mobile Number validation
-    if (!formData.mobileNumber.trim()) {
+    if (!ownerInfo.mobileNumber.trim()) {
       newErrors.mobileNumber = "Mobile number is required";
-    } else if (!/^[6-9]\d{9}$/.test(formData.mobileNumber)) {
+    } else if (!/^[6-9]\d{9}$/.test(ownerInfo.mobileNumber)) {
       newErrors.mobileNumber = "Please enter a valid 10-digit Indian mobile number";
     }
 
-    // Govt Registration ID validation
-    if (!formData.govtRegistrationId.trim()) {
-      newErrors.govtRegistrationId = "Government registration ID is required";
-    } else if (formData.govtRegistrationId.trim().length < 5) {
-      newErrors.govtRegistrationId = "Registration ID must be at least 5 characters";
-    } else if (formData.govtRegistrationId.trim().length > 50) {
-      newErrors.govtRegistrationId = "Registration ID cannot exceed 50 characters";
-    }
+    // Validate each hostel
+    let hasHostelErrors = false;
+    hostels.forEach((hostel, index) => {
+      const hostelError: any = {};
 
-    // Hostel Type validation
-    if (!formData.hostelType) {
-      newErrors.hostelType = "Please select a hostel type";
-    }
+      if (!hostel.hostelName.trim()) {
+        hostelError.hostelName = "Hostel name is required";
+        hasHostelErrors = true;
+      } else if (hostel.hostelName.trim().length < 3) {
+        hostelError.hostelName = "Hostel name must be at least 3 characters";
+        hasHostelErrors = true;
+      } else if (hostel.hostelName.trim().length > 100) {
+        hostelError.hostelName = "Hostel name cannot exceed 100 characters";
+        hasHostelErrors = true;
+      }
 
-    // Full Address validation
-    if (!formData.fullAddress.trim()) {
-      newErrors.fullAddress = "Full address is required";
-    } else if (formData.fullAddress.trim().length < 10) {
-      newErrors.fullAddress = "Address must be at least 10 characters";
-    } else if (formData.fullAddress.trim().length > 500) {
-      newErrors.fullAddress = "Address cannot exceed 500 characters";
-    }
+      if (!hostel.hostelType) {
+        hostelError.hostelType = "Please select a hostel type";
+        hasHostelErrors = true;
+      }
 
-    // File upload validation
-    if (uploadedFiles.length === 0) {
-      newErrors.upload = "Please upload at least one document";
-    } else if (uploadedFiles.length > 10) {
-      newErrors.upload = "Maximum 10 files allowed";
-    }
+      if (!hostel.govtRegistrationId.trim()) {
+        hostelError.govtRegistrationId = "Government registration ID is required";
+        hasHostelErrors = true;
+      } else if (hostel.govtRegistrationId.trim().length < 5) {
+        hostelError.govtRegistrationId = "Registration ID must be at least 5 characters";
+        hasHostelErrors = true;
+      } else if (hostel.govtRegistrationId.trim().length > 50) {
+        hostelError.govtRegistrationId = "Registration ID cannot exceed 50 characters";
+        hasHostelErrors = true;
+      }
 
+      if (!hostel.fullAddress.trim()) {
+        hostelError.fullAddress = "Full address is required";
+        hasHostelErrors = true;
+      } else if (hostel.fullAddress.trim().length < 10) {
+        hostelError.fullAddress = "Address must be at least 10 characters";
+        hasHostelErrors = true;
+      } else if (hostel.fullAddress.trim().length > 500) {
+        hostelError.fullAddress = "Address cannot exceed 500 characters";
+        hasHostelErrors = true;
+      }
+
+      if (hostel.documents.length === 0) {
+        hostelError.documents = "Please upload at least one document for this hostel";
+        hasHostelErrors = true;
+      } else if (hostel.documents.length > 10) {
+        hostelError.documents = "Maximum 10 files per hostel";
+        hasHostelErrors = true;
+      }
+
+      hostelErrors[index].errors = hostelError;
+    });
+
+    setHostels(hostelErrors);
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+
+    return Object.keys(newErrors).length === 0 && !hasHostelErrors;
   };
 
   // ✅ Real-time field validation
-  const validateField = (fieldName: string, value: string) => {
+  const validateField = (fieldName: string, value: string, isOwnerField: boolean = true) => {
     let error = "";
-    
-    switch (fieldName) {
-      case 'fullName':
-        if (!value.trim()) error = "Full name is required";
-        else if (value.trim().length < 3) error = "Minimum 3 characters";
-        else if (value.trim().length > 50) error = "Maximum 50 characters";
-        break;
-        
-      case 'hostelName':
-        if (!value.trim()) error = "Hostel name is required";
-        else if (value.trim().length < 3) error = "Minimum 3 characters";
-        else if (value.trim().length > 100) error = "Maximum 100 characters";
-        break;
-        
-      case 'email':
-        if (!value.trim()) error = "Email is required";
-        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = "Invalid email format";
-        else if (value.length > 100) error = "Maximum 100 characters";
-        break;
-        
-      case 'mobileNumber':
-        if (!value.trim()) error = "Mobile number is required";
-        else if (!/^[0-9]*$/.test(value)) error = "Only numbers allowed";
-        else if (value.length !== 10) error = "Must be 10 digits";
-        else if (!/^[6-9]/.test(value)) error = "Must start with 6-9";
-        break;
-        
-      case 'govtRegistrationId':
-        if (!value.trim()) error = "Registration ID is required";
-        else if (value.trim().length < 5) error = "Minimum 5 characters";
-        else if (value.trim().length > 50) error = "Maximum 50 characters";
-        break;
-        
-      case 'fullAddress':
-        if (!value.trim()) error = "Address is required";
-        else if (value.trim().length < 10) error = "Minimum 10 characters";
-        else if (value.trim().length > 500) error = "Maximum 500 characters";
-        break;
+
+    if (isOwnerField) {
+      switch (fieldName) {
+        case 'fullName':
+          if (!value.trim()) error = "Full name is required";
+          else if (value.trim().length < 3) error = "Minimum 3 characters";
+          else if (value.trim().length > 50) error = "Maximum 50 characters";
+          break;
+
+        case 'email':
+          if (!value.trim()) error = "Email is required";
+          else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) error = "Invalid email format";
+          else if (value.length > 100) error = "Maximum 100 characters";
+          break;
+
+        case 'mobileNumber':
+          if (!value.trim()) error = "Mobile number is required";
+          else if (!/^[0-9]*$/.test(value)) error = "Only numbers allowed";
+          else if (value.length !== 10) error = "Must be 10 digits";
+          else if (!/^[6-9]/.test(value)) error = "Must start with 6-9";
+          break;
+      }
+
+      setErrors(prev => ({
+        ...prev,
+        [fieldName]: error
+      }));
+    } else {
+      // Validate hostel field
+      const updatedHostels = [...hostels];
+      const hostel = updatedHostels[currentHostelIndex];
+
+      switch (fieldName) {
+        case 'hostelName':
+          if (!value.trim()) error = "Hostel name is required";
+          else if (value.trim().length < 3) error = "Minimum 3 characters";
+          else if (value.trim().length > 100) error = "Maximum 100 characters";
+          break;
+
+        case 'govtRegistrationId':
+          if (!value.trim()) error = "Registration ID is required";
+          else if (value.trim().length < 5) error = "Minimum 5 characters";
+          else if (value.trim().length > 50) error = "Maximum 50 characters";
+          break;
+
+        case 'fullAddress':
+          if (!value.trim()) error = "Address is required";
+          else if (value.trim().length < 10) error = "Minimum 10 characters";
+          else if (value.trim().length > 500) error = "Maximum 500 characters";
+          break;
+      }
+
+      updatedHostels[currentHostelIndex].errors = {
+        ...updatedHostels[currentHostelIndex].errors,
+        [fieldName]: error
+      };
+
+      setHostels(updatedHostels);
     }
-    
-    setErrors(prev => ({
-      ...prev,
-      [fieldName]: error
-    }));
-    
+
     return error === "";
   };
 
-  // ✅ Handle field change with validation
-  const handleFieldChange = (fieldName: string, value: string) => {
-    setFormData(prev => ({
+  // ✅ Handle owner field change
+  const handleOwnerFieldChange = (fieldName: string, value: string) => {
+    setOwnerInfo(prev => ({
       ...prev,
       [fieldName]: value
     }));
-    
-    // Clear error when user starts typing
+
     if (errors[fieldName]) {
       setErrors(prev => ({
         ...prev,
         [fieldName]: ""
       }));
     }
-    
-    // If email field is being edited, hide the email exists modal
+
     if (fieldName === 'email' && emailExistsModal) {
       setEmailExistsModal(false);
+    }
+  };
+
+  // ✅ Handle hostel field change
+  const handleHostelFieldChange = (fieldName: string, value: string) => {
+    const updatedHostels = [...hostels];
+    updatedHostels[currentHostelIndex] = {
+      ...updatedHostels[currentHostelIndex],
+      [fieldName]: value
+    };
+
+    // Clear error when user starts typing
+    if (updatedHostels[currentHostelIndex].errors[fieldName]) {
+      updatedHostels[currentHostelIndex].errors = {
+        ...updatedHostels[currentHostelIndex].errors,
+        [fieldName]: ""
+      };
+    }
+
+    setHostels(updatedHostels);
+  };
+
+  // ✅ Handle number of hostels change
+  const handleNumberOfHostelsChange = (count: number) => {
+    setNumberOfHostels(count);
+
+    if (count > hostels.length) {
+      // Add new hostels
+      const newHostels = [...hostels];
+      for (let i = hostels.length + 1; i <= count; i++) {
+        newHostels.push({
+          id: i,
+          hostelName: "",
+          hostelType: "co-living",
+          govtRegistrationId: "",
+          fullAddress: "",
+          documents: [],
+          errors: {}
+        });
+      }
+      setHostels(newHostels);
+    } else if (count < hostels.length) {
+      // Remove extra hostels
+      const newHostels = hostels.slice(0, count);
+      setHostels(newHostels);
+
+      // Adjust current index if needed
+      if (currentHostelIndex >= count) {
+        setCurrentHostelIndex(count - 1);
+      }
+    }
+  };
+
+  // ✅ Navigate between hostels
+  const goToNextHostel = () => {
+    if (currentHostelIndex < hostels.length - 1) {
+      setCurrentHostelIndex(currentHostelIndex + 1);
+    }
+  };
+
+  const goToPrevHostel = () => {
+    if (currentHostelIndex > 0) {
+      setCurrentHostelIndex(currentHostelIndex - 1);
     }
   };
 
@@ -212,7 +345,7 @@ export default function HostelOwnerRegistration() {
     return extension ? IMAGE_EXTENSIONS.includes(extension) : false;
   };
 
-  // ✅ File upload picker
+  // ✅ File upload picker for current hostel
   const handleFileUpload = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
@@ -224,8 +357,10 @@ export default function HostelOwnerRegistration() {
       if (!files || files.length === 0) return;
 
       let newFiles: Array<{ name: string; uri: string; type: string }> = [];
+      const currentHostel = hostels[currentHostelIndex];
+
       for (let file of files) {
-        if (file && file.uri && file.name && !uploadedFiles.some((f) => f.uri === file.uri)) {
+        if (file && file.uri && file.name && !currentHostel.documents.some((f) => f.uri === file.uri)) {
           const fileType = isImageFile(file.name) ? 'image' : 'pdf';
           newFiles.push({
             name: file.name,
@@ -234,27 +369,31 @@ export default function HostelOwnerRegistration() {
           });
         }
       }
-      
+
       if (newFiles.length > 0) {
-        const updatedFiles = [...uploadedFiles, ...newFiles];
+        const updatedHostels = [...hostels];
+        const updatedFiles = [...currentHostel.documents, ...newFiles];
+
         if (updatedFiles.length > 10) {
-          Toast.show({ 
-            type: "error", 
-            text1: "Maximum 10 files allowed",
+          Toast.show({
+            type: "error",
+            text1: "Maximum 10 files per hostel",
             text2: `You have ${updatedFiles.length} files. Please remove some.`
           });
           return;
         }
-        
-        setUploadedFiles(updatedFiles);
+
+        updatedHostels[currentHostelIndex].documents = updatedFiles;
+        setHostels(updatedHostels);
         Toast.show({ type: "success", text1: "Files uploaded ✅" });
-        
+
         // Clear upload error if files are added
-        if (errors.upload) {
-          setErrors(prev => ({
-            ...prev,
-            upload: ""
-          }));
+        if (updatedHostels[currentHostelIndex].errors.documents) {
+          updatedHostels[currentHostelIndex].errors = {
+            ...updatedHostels[currentHostelIndex].errors,
+            documents: ""
+          };
+          setHostels(updatedHostels);
         }
       }
     } catch (error) {
@@ -292,15 +431,12 @@ export default function HostelOwnerRegistration() {
     }
   };
 
-  // ✅ Close image preview
-  const closePreview = () => {
-    setPreviewVisible(false);
-    setPreviewUri("");
-  };
-
-  // ✅ Remove file
+  // ✅ Remove file from current hostel
   const handleRemoveFile = (index: number) => {
-    setUploadedFiles((prev) => prev.filter((_, i) => i !== index));
+    const updatedHostels = [...hostels];
+    updatedHostels[currentHostelIndex].documents =
+      updatedHostels[currentHostelIndex].documents.filter((_, i) => i !== index);
+    setHostels(updatedHostels);
     Toast.show({ type: "success", text1: "File removed" });
   };
 
@@ -317,16 +453,16 @@ export default function HostelOwnerRegistration() {
           <View style={styles.emailModalHeader}>
             <Text style={styles.emailModalTitle}>⚠️ Email Already Registered</Text>
           </View>
-          
+
           <View style={styles.emailModalBody}>
             <Text style={styles.emailModalText}>
-              The email <Text style={styles.emailHighlight}>{formData.email}</Text> is already registered in our system.
+              The email <Text style={styles.emailHighlight}>{ownerInfo.email}</Text> is already registered in our system.
             </Text>
-            
+
             <Text style={styles.emailModalSubtext}>
               You can either:
             </Text>
-            
+
             <View style={styles.emailModalOptions}>
               <View style={styles.optionCard}>
                 <Text style={styles.optionNumber}>1</Text>
@@ -335,7 +471,7 @@ export default function HostelOwnerRegistration() {
                   Change your email address to continue with new registration
                 </Text>
               </View>
-              
+
               <View style={styles.optionCard}>
                 <Text style={styles.optionNumber}>2</Text>
                 <Text style={styles.optionTitle}>Login to Existing Account</Text>
@@ -345,19 +481,19 @@ export default function HostelOwnerRegistration() {
               </View>
             </View>
           </View>
-          
+
           <View style={styles.emailModalFooter}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.modalButton, styles.changeEmailButton]}
               onPress={() => {
                 setEmailExistsModal(false);
-                setFormData(prev => ({ ...prev, email: "" }));
+                setOwnerInfo(prev => ({ ...prev, email: "" }));
               }}
             >
               <Text style={styles.changeEmailButtonText}>Change Email</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={[styles.modalButton, styles.loginButton]}
               onPress={() => {
                 setEmailExistsModal(false);
@@ -376,10 +512,10 @@ export default function HostelOwnerRegistration() {
   const handleSubmit = async () => {
     // First validate form
     if (!validateForm()) {
-      Toast.show({ 
-        type: "error", 
-        text1: "Validation Failed", 
-        text2: "Please fix the errors before submitting." 
+      Toast.show({
+        type: "error",
+        text1: "Validation Failed",
+        text2: "Please fix the errors before submitting."
       });
       return;
     }
@@ -389,33 +525,48 @@ export default function HostelOwnerRegistration() {
       setApiError(""); // Clear previous API errors
 
       const formDataToSend = new FormData();
-      formDataToSend.append("fullName", formData.fullName.trim());
-      formDataToSend.append("hostelName", formData.hostelName.trim());
-      formDataToSend.append("email", formData.email.trim());
-      formDataToSend.append("mobileNumber", formData.mobileNumber.trim());
-      formDataToSend.append("govtRegistrationId", formData.govtRegistrationId.trim());
-      formDataToSend.append("fullAddress", formData.fullAddress.trim());
-      formDataToSend.append("hostelType", formData.hostelType);
 
-      // Append documents
-      uploadedFiles.forEach((file) => {
-        const fileExtension = file.name.split(".").pop()?.toLowerCase();
-        let mimeType = "application/pdf";
+      // Append owner information
+      formDataToSend.append("fullName", ownerInfo.fullName.trim());
+      formDataToSend.append("email", ownerInfo.email.trim());
+      formDataToSend.append("mobileNumber", ownerInfo.mobileNumber.trim());
+      formDataToSend.append("numberOfHostels", numberOfHostels.toString());
 
-        if (fileExtension === "png") mimeType = "image/png";
-        else if (fileExtension === "jpg" || fileExtension === "jpeg") mimeType = "image/jpeg";
+      // Append hostels data as JSON
+      const hostelsData = hostels.map(hostel => ({
+        hostelName: hostel.hostelName.trim(),
+        hostelType: hostel.hostelType,
+        govtRegistrationId: hostel.govtRegistrationId.trim(),
+        fullAddress: hostel.fullAddress.trim(),
+      }));
 
-        formDataToSend.append("documents", {
-          uri: file.uri,
-          type: mimeType,
-          name: file.name,
-        } as any);
+      formDataToSend.append("hostels", JSON.stringify(hostelsData));
+
+      // Append documents for each hostel
+      hostels.forEach((hostel, hostelIndex) => {
+        hostel.documents.forEach((file) => {
+          const ext = file.name.split('.').pop()?.toLowerCase();
+          let mimeType = 'application/pdf';
+
+          if (ext === 'png') mimeType = 'image/png';
+          if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+
+          formDataToSend.append(
+            `hostel_${hostelIndex}_documents`,
+            {
+              uri: file.uri,
+              type: mimeType,
+              name: file.name,
+            } as any
+          );
+        });
       });
 
-      console.log("📎 Files to upload:", uploadedFiles.length);
+
+      console.log("📎 Total files to upload:", hostels.reduce((sum, hostel) => sum + hostel.documents.length, 0));
 
       // ✅ POST API Call
-      const response = await ApiClient.post("/hostel-owner/register", formDataToSend, {
+      const response = await ApiClient.post("/hostel-registration/register", formDataToSend, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -426,7 +577,7 @@ export default function HostelOwnerRegistration() {
       Toast.show({
         type: "success",
         text1: "Registration successful!",
-        text2: "Please wait for admin approval.",
+        text2: `${numberOfHostels} hostel${numberOfHostels > 1 ? 's' : ''} registered. Please wait for admin approval.`,
       });
 
       // Show progress steps
@@ -448,14 +599,14 @@ export default function HostelOwnerRegistration() {
           "Registration failed. Please try again.";
 
         // Check if error is about email already registered
-        if (errorMessage.toLowerCase().includes("email already") || 
-            errorMessage.toLowerCase().includes("email exists") ||
-            error.response.status === 400 && errorMessage === "Email already registered") {
-          
+        if (errorMessage.toLowerCase().includes("email already") ||
+          errorMessage.toLowerCase().includes("email exists") ||
+          error.response.status === 400 && errorMessage === "Email already registered") {
+
           // Show custom modal instead of toast
           setEmailExistsModal(true);
           setApiError(errorMessage);
-          
+
         } else {
           // For other errors, show toast
           Toast.show({
@@ -482,11 +633,14 @@ export default function HostelOwnerRegistration() {
       visible={previewVisible}
       transparent={true}
       animationType="fade"
-      onRequestClose={closePreview}
+      onRequestClose={() => {
+        setPreviewVisible(false);
+        setPreviewUri("");
+      }}
     >
       <View style={styles.modalContainer}>
         <View style={styles.modalHeader}>
-          <TouchableOpacity onPress={closePreview} style={styles.closeButton}>
+          <TouchableOpacity onPress={() => setPreviewVisible(false)} style={styles.closeButton}>
             <Text style={styles.closeButtonText}>✕</Text>
           </TouchableOpacity>
         </View>
@@ -509,7 +663,7 @@ export default function HostelOwnerRegistration() {
           <Text style={styles.bigEmoji}>✅</Text>
           <Text style={styles.approvedTitle}>Approved!</Text>
           <Text style={styles.subtitle}>
-            Your hostel registration has been successfully verified.
+            Your {numberOfHostels} hostel registration{numberOfHostels > 1 ? 's' : ''} {numberOfHostels > 1 ? 'have' : 'has'} been successfully verified.
           </Text>
           <TouchableOpacity
             style={styles.buttonPrimary}
@@ -590,6 +744,9 @@ export default function HostelOwnerRegistration() {
     );
   }
 
+  // Get current hostel
+  const currentHostel = hostels[currentHostelIndex];
+
   // ✅ Main Registration Form
   return (
     <SafeAreaView style={styles.container}>
@@ -598,174 +755,257 @@ export default function HostelOwnerRegistration() {
           <Text style={styles.pageTitle}>Hostel Owner Registration</Text>
 
           <View style={styles.card}>
-            <FormInput
-              label="Full Name *"
-              value={formData.fullName}
-              onChangeText={(t: string) => handleFieldChange('fullName', t)}
-              onBlur={() => validateField('fullName', formData.fullName)}
-              error={errors.fullName}
-              placeholder="Enter your full name"
-              maxLength={50}
-            />
-            
-            <FormInput
-              label="Hostel Name *"
-              value={formData.hostelName}
-              onChangeText={(t: string) => handleFieldChange('hostelName', t)}
-              onBlur={() => validateField('hostelName', formData.hostelName)}
-              error={errors.hostelName}
-              placeholder="Enter hostel name"
-              maxLength={100}
-            />
-            
-            <FormInput
-              label="Email *"
-              value={formData.email}
-              onChangeText={(t: string) => handleFieldChange('email', t)}
-              onBlur={() => validateField('email', formData.email)}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              error={errors.email}
-              placeholder="Enter your email"
-              maxLength={100}
-            />
-            
-            <FormInput
-              label="Mobile Number *"
-              value={formData.mobileNumber}
-              onChangeText={(t: string) => {
-                // Allow only numbers
-                const numericValue = t.replace(/[^0-9]/g, '');
-                handleFieldChange('mobileNumber', numericValue);
-              }}
-              onBlur={() => validateField('mobileNumber', formData.mobileNumber)}
-              keyboardType="phone-pad"
-              error={errors.mobileNumber}
-              placeholder="Enter 10-digit mobile number"
-              maxLength={10}
-            />
-            
-            <FormInput
-              label="Govt. Registration ID *"
-              value={formData.govtRegistrationId}
-              onChangeText={(t: string) => handleFieldChange('govtRegistrationId', t)}
-              onBlur={() => validateField('govtRegistrationId', formData.govtRegistrationId)}
-              error={errors.govtRegistrationId}
-              placeholder="Enter government registration ID"
-              maxLength={50}
-            />
+            {/* Owner Information Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Owner Information</Text>
 
-            {/* Hostel Type Selector */}
-            <View style={{ marginBottom: 15 }}>
-              <Text style={styles.label}>Hostel Type *</Text>
-              <View style={styles.hostelTypeContainer}>
-                {hostelTypes.map((type) => (
+              <FormInput
+                label="Full Name *"
+                value={ownerInfo.fullName}
+                onChangeText={(t: string) => handleOwnerFieldChange('fullName', t)}
+                onBlur={() => validateField('fullName', ownerInfo.fullName)}
+                error={errors.fullName}
+                placeholder="Enter your full name"
+                maxLength={50}
+              />
+
+              <FormInput
+                label="Email *"
+                value={ownerInfo.email}
+                onChangeText={(t: string) => handleOwnerFieldChange('email', t)}
+                onBlur={() => validateField('email', ownerInfo.email)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                error={errors.email}
+                placeholder="Enter your email"
+                maxLength={100}
+              />
+
+              <FormInput
+                label="Mobile Number *"
+                value={ownerInfo.mobileNumber}
+                onChangeText={(t: string) => {
+                  const numericValue = t.replace(/[^0-9]/g, '');
+                  handleOwnerFieldChange('mobileNumber', numericValue);
+                }}
+                onBlur={() => validateField('mobileNumber', ownerInfo.mobileNumber)}
+                keyboardType="phone-pad"
+                error={errors.mobileNumber}
+                placeholder="Enter 10-digit mobile number"
+                maxLength={10}
+              />
+            </View>
+
+            {/* Number of Hostels Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Number of Hostels</Text>
+              <Text style={styles.sectionSubtitle}>Select how many hostels you want to register (max 10)</Text>
+
+              <View style={styles.hostelCountContainer}>
+                {HOSTEL_COUNT_OPTIONS.map((option) => (
                   <TouchableOpacity
-                    key={type.value}
+                    key={option.value}
                     style={[
-                      styles.hostelTypeButton,
-                      formData.hostelType === type.value && styles.hostelTypeButtonSelected
+                      styles.hostelCountButton,
+                      numberOfHostels === option.value && styles.hostelCountButtonSelected
                     ]}
-                    onPress={() => {
-                      setFormData({ ...formData, hostelType: type.value });
-                      if (errors.hostelType) {
-                        setErrors(prev => ({ ...prev, hostelType: "" }));
-                      }
-                    }}
+                    onPress={() => handleNumberOfHostelsChange(option.value)}
                   >
-                    <Text style={styles.hostelTypeIcon}>{type.icon}</Text>
                     <Text style={[
-                      styles.hostelTypeLabel,
-                      formData.hostelType === type.value && styles.hostelTypeLabelSelected
+                      styles.hostelCountText,
+                      numberOfHostels === option.value && styles.hostelCountTextSelected
                     ]}>
-                      {type.label}
+                      {option.label}
                     </Text>
                   </TouchableOpacity>
                 ))}
               </View>
-              {errors.hostelType && <Text style={styles.errorText}>{errors.hostelType}</Text>}
             </View>
 
-            {/* File Upload Section */}
-            <View style={styles.uploadContainer}>
-              <Text style={styles.inputLabel}>Upload Documents *</Text>
-              <Text style={styles.requiredDocs}>
-                Upload: Licence, Aadhaar, PAN, NOC, Property Docs (PDF or Images)
-              </Text>
-              <Text style={styles.fileLimitText}>Max 10 files • PDF, PNG, JPG</Text>
-              <TouchableOpacity style={styles.uploadBtn} onPress={handleFileUpload}>
-                <Text style={styles.uploadBtnText}>📁 Choose Files</Text>
-              </TouchableOpacity>
-              {errors.upload && <Text style={styles.errorText}>{errors.upload}</Text>}
-              
-              {uploadedFiles.length > 0 && (
-                <View style={styles.fileCountContainer}>
-                  <Text style={styles.fileCountText}>
-                    {uploadedFiles.length} file{uploadedFiles.length !== 1 ? 's' : ''} selected
+            {/* Hostel Information Section */}
+            <View style={styles.section}>
+              <View style={styles.hostelHeader}>
+                <Text style={styles.sectionTitle}>
+                  Hostel {currentHostelIndex + 1} of {hostels.length}
+                </Text>
+
+                <View style={styles.hostelNavigation}>
+                  <TouchableOpacity
+                    style={[styles.navButton, currentHostelIndex === 0 && styles.navButtonDisabled]}
+                    onPress={goToPrevHostel}
+                    disabled={currentHostelIndex === 0}
+                  >
+                    <Text style={styles.navButtonText}>← Previous</Text>
+                  </TouchableOpacity>
+
+                  <Text style={styles.hostelCounter}>
+                    {currentHostelIndex + 1}/{hostels.length}
                   </Text>
+
+                  <TouchableOpacity
+                    style={[styles.navButton, currentHostelIndex === hostels.length - 1 && styles.navButtonDisabled]}
+                    onPress={goToNextHostel}
+                    disabled={currentHostelIndex === hostels.length - 1}
+                  >
+                    <Text style={styles.navButtonText}>Next →</Text>
+                  </TouchableOpacity>
                 </View>
-              )}
-              
-              {uploadedFiles.map((file, i) => (
-                <View key={i} style={styles.fileCard}>
-                  <View style={styles.fileHeader}>
-                    <Text style={styles.fileItem} numberOfLines={1} ellipsizeMode="middle">
-                      {file.name}
-                    </Text>
-                    <Text style={styles.fileTypeBadge}>
-                      {file.type === 'image' ? '📷 Image' : '📄 PDF'}
-                    </Text>
-                  </View>
-                  <View style={styles.fileActionsRow}>
+              </View>
+
+              <Text style={styles.sectionSubtitle}>
+                Fill details for Hostel {currentHostelIndex + 1}
+              </Text>
+
+              <FormInput
+                label="Hostel Name *"
+                value={currentHostel.hostelName}
+                onChangeText={(t: string) => handleHostelFieldChange('hostelName', t)}
+                onBlur={() => validateField('hostelName', currentHostel.hostelName, false)}
+                error={currentHostel.errors.hostelName}
+                placeholder={`Enter name for Hostel ${currentHostelIndex + 1}`}
+                maxLength={100}
+              />
+
+              {/* Hostel Type Selector */}
+              <View style={{ marginBottom: 15 }}>
+                <Text style={styles.label}>Hostel Type *</Text>
+                <View style={styles.hostelTypeContainer}>
+                  {HOSTEL_TYPES.map((type) => (
                     <TouchableOpacity
-                      onPress={() => handleViewFile(file)}
-                      style={[styles.fileActionBtn, styles.viewBtn]}
+                      key={type.value}
+                      style={[
+                        styles.hostelTypeButton,
+                        currentHostel.hostelType === type.value && styles.hostelTypeButtonSelected
+                      ]}
+                      onPress={() => {
+                        handleHostelFieldChange('hostelType', type.value);
+                        if (currentHostel.errors.hostelType) {
+                          const updatedHostels = [...hostels];
+                          updatedHostels[currentHostelIndex].errors = {
+                            ...updatedHostels[currentHostelIndex].errors,
+                            hostelType: ""
+                          };
+                          setHostels(updatedHostels);
+                        }
+                      }}
                     >
-                      <Text style={styles.fileActionText}>
-                        {file.type === 'image' ? '👀 Preview' : '📄 View'}
+                      <Text style={styles.hostelTypeIcon}>{type.icon}</Text>
+                      <Text style={[
+                        styles.hostelTypeLabel,
+                        currentHostel.hostelType === type.value && styles.hostelTypeLabelSelected
+                      ]}>
+                        {type.label}
                       </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handleRemoveFile(i)}
-                      style={[styles.fileActionBtn, styles.removeBtn]}
-                    >
-                      <Text style={styles.fileActionText}>🗑 Remove</Text>
-                    </TouchableOpacity>
-                  </View>
+                  ))}
                 </View>
-              ))}
+                {currentHostel.errors.hostelType && (
+                  <Text style={styles.errorText}>{currentHostel.errors.hostelType}</Text>
+                )}
+              </View>
+
+              <FormInput
+                label="Govt. Registration ID *"
+                value={currentHostel.govtRegistrationId}
+                onChangeText={(t: string) => handleHostelFieldChange('govtRegistrationId', t)}
+                onBlur={() => validateField('govtRegistrationId', currentHostel.govtRegistrationId, false)}
+                error={currentHostel.errors.govtRegistrationId}
+                placeholder="Enter government registration ID"
+                maxLength={50}
+              />
+
+              {/* File Upload Section for Current Hostel */}
+              <View style={styles.uploadContainer}>
+                <Text style={styles.inputLabel}>Upload Documents for Hostel {currentHostelIndex + 1} *</Text>
+                <Text style={styles.requiredDocs}>
+                  Upload: Licence, Aadhaar, PAN, NOC, Property Docs (PDF or Images)
+                </Text>
+                <Text style={styles.fileLimitText}>Max 10 files per hostel • PDF, PNG, JPG</Text>
+                <TouchableOpacity style={styles.uploadBtn} onPress={handleFileUpload}>
+                  <Text style={styles.uploadBtnText}>📁 Choose Files</Text>
+                </TouchableOpacity>
+                {currentHostel.errors.documents && (
+                  <Text style={styles.errorText}>{currentHostel.errors.documents}</Text>
+                )}
+
+                {currentHostel.documents.length > 0 && (
+                  <View style={styles.fileCountContainer}>
+                    <Text style={styles.fileCountText}>
+                      {currentHostel.documents.length} file{currentHostel.documents.length !== 1 ? 's' : ''} selected for this hostel
+                    </Text>
+                  </View>
+                )}
+
+                {currentHostel.documents.map((file, i) => (
+                  <View key={i} style={styles.fileCard}>
+                    <View style={styles.fileHeader}>
+                      <Text style={styles.fileItem} numberOfLines={1} ellipsizeMode="middle">
+                        {file.name}
+                      </Text>
+                      <Text style={styles.fileTypeBadge}>
+                        {file.type === 'image' ? '📷 Image' : '📄 PDF'}
+                      </Text>
+                    </View>
+                    <View style={styles.fileActionsRow}>
+                      <TouchableOpacity
+                        onPress={() => handleViewFile(file)}
+                        style={[styles.fileActionBtn, styles.viewBtn]}
+                      >
+                        <Text style={styles.fileActionText}>
+                          {file.type === 'image' ? '👀 Preview' : '📄 View'}
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleRemoveFile(i)}
+                        style={[styles.fileActionBtn, styles.removeBtn]}
+                      >
+                        <Text style={styles.fileActionText}>🗑 Remove</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              <FormInput
+                label="Full Address *"
+                value={currentHostel.fullAddress}
+                onChangeText={(t: string) => handleHostelFieldChange('fullAddress', t)}
+                onBlur={() => validateField('fullAddress', currentHostel.fullAddress, false)}
+                multiline
+                numberOfLines={4}
+                style={{ textAlignVertical: "top", minHeight: 100 }}
+                error={currentHostel.errors.fullAddress}
+                placeholder="Enter complete hostel address"
+                maxLength={500}
+              />
             </View>
 
-            <FormInput
-              label="Full Address *"
-              value={formData.fullAddress}
-              onChangeText={(t: string) => handleFieldChange('fullAddress', t)}
-              onBlur={() => validateField('fullAddress', formData.fullAddress)}
-              multiline
-              numberOfLines={4}
-              style={{ textAlignVertical: "top", minHeight: 100 }}
-              error={errors.fullAddress}
-              placeholder="Enter complete hostel address"
-              maxLength={500}
-            />
-            
             {/* Validation Summary */}
-            {Object.keys(errors).length > 0 && (
+            {(Object.keys(errors).length > 0 || hostels.some(h => Object.keys(h.errors).length > 0)) && (
               <View style={styles.validationSummary}>
                 <Text style={styles.validationTitle}>Please fix the following errors:</Text>
                 {Object.entries(errors).map(([key, value]) => (
-                  value && <Text key={key} style={styles.validationError}>• {value}</Text>
+                  value && <Text key={key} style={styles.validationError}>• Owner: {value}</Text>
+                ))}
+                {hostels.map((hostel, index) => (
+                  Object.entries(hostel.errors).map(([key, value]) => (
+                    value && (
+                      <Text key={`hostel-${index}-${key}`} style={styles.validationError}>
+                        • Hostel {index + 1}: {value}
+                      </Text>
+                    )
+                  ))
                 ))}
               </View>
             )}
-            
-            <TouchableOpacity 
-              style={[styles.buttonSubmit, isSubmitted && styles.buttonDisabled]} 
+
+            <TouchableOpacity
+              style={[styles.buttonSubmit, isSubmitted && styles.buttonDisabled]}
               onPress={handleSubmit}
               disabled={isSubmitted}
             >
               <Text style={styles.buttonSubmitText}>
-                {isSubmitted ? "Submitting..." : "Submit Registration"}
+                {isSubmitted ? "Submitting..." : `Register ${numberOfHostels} Hostel${numberOfHostels > 1 ? 's' : ''}`}
               </Text>
             </TouchableOpacity>
 
@@ -797,7 +1037,7 @@ export default function HostelOwnerRegistration() {
 function FormInput({ label, error, style, onBlur, maxLength, ...props }: any) {
   const [focused, setFocused] = useState(false);
   const [characterCount, setCharacterCount] = useState(props.value?.length || 0);
-  
+
   const handleChangeText = (text: string) => {
     if (maxLength && text.length > maxLength) {
       text = text.substring(0, maxLength);
@@ -890,6 +1130,53 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 10,
     elevation: 6,
+  },
+  section: {
+    marginBottom: 30,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: TEXT_DARK,
+    marginBottom: 8,
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: TEXT_GRAY,
+    marginBottom: 16,
+  },
+  hostelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  hostelNavigation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  navButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+  },
+  navButtonDisabled: {
+    opacity: 0.5,
+  },
+  navButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: TEXT_GRAY,
+  },
+  hostelCounter: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: ACCENT,
+    marginHorizontal: 12,
   },
   labelContainer: {
     flexDirection: 'row',
@@ -1339,5 +1626,32 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 6,
     fontSize: 14,
+  },
+  // Hostel Count Selector
+  hostelCountContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  hostelCountButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  hostelCountButtonSelected: {
+    backgroundColor: ACCENT,
+    borderColor: ACCENT,
+  },
+  hostelCountText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: TEXT_GRAY,
+  },
+  hostelCountTextSelected: {
+    color: '#fff',
   },
 });

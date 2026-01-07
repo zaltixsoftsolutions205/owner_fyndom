@@ -1,4 +1,5 @@
 import ApiClient from "./ApiClient";
+import { Platform } from "react-native";
 
 export interface Photo {
   _id: string;
@@ -7,6 +8,9 @@ export interface Photo {
   url: string;
   isPrimary: boolean;
   uploadDate: string;
+  hostelId: string;
+  uploadedBy?: string;
+  userRole?: string;
 }
 
 export interface PhotoUploadResponse {
@@ -14,6 +18,10 @@ export interface PhotoUploadResponse {
   message: string;
   data: {
     photos: Photo[];
+    hostelId: string;
+    hostelName: string;
+    totalPhotos: number;
+    photosForThisHostel: number;
   };
 }
 
@@ -23,6 +31,16 @@ export interface DeletePhotoResponse {
   data: {
     deletedPhotoId: string;
     remainingPhotos: number;
+  };
+}
+
+export interface GetPhotosResponse {
+  success: boolean;
+  data: Photo[];
+  metadata?: {
+    totalPhotos: number;
+    byHostel: number;
+    primaryPhotos: number;
   };
 }
 
@@ -48,12 +66,12 @@ class HostelPhotoApi {
     return new Blob(byteArrays, { type: contentType });
   }
 
-  // Upload photos - WEB COMPATIBLE VERSION
-  async uploadPhotos(photos: any[]): Promise<PhotoUploadResponse> {
+  // Upload photos with hostelId
+  async uploadPhotos(photos: any[], hostelId: string, replace: boolean = false): Promise<PhotoUploadResponse> {
     try {
       const formData = new FormData();
 
-      console.log('🔄 Preparing FormData with photos:', photos.length);
+      console.log('🔄 Preparing FormData with photos:', photos.length, 'for hostel:', hostelId);
 
       photos.forEach((photo, index) => {
         console.log(`📄 Photo ${index + 1}:`, {
@@ -86,7 +104,11 @@ class HostelPhotoApi {
         formData.append('photos', file);
       });
 
-      console.log('🚀 Sending FormData to backend...');
+      // Add hostelId and replace flag to formData
+      formData.append('hostelId', hostelId);
+      formData.append('replace', replace.toString());
+
+      console.log('🚀 Sending FormData to backend with hostelId:', hostelId);
 
       const response = await ApiClient.post("/hostel-operations/upload-photos", formData, {
         headers: {
@@ -107,18 +129,24 @@ class HostelPhotoApi {
     }
   }
 
-  // Get hostel photos
-  async getHostelPhotos(): Promise<PhotoUploadResponse> {
+  // Get hostel photos with hostelId parameter
+  async getHostelPhotos(hostelId?: string): Promise<GetPhotosResponse> {
     try {
-      console.log('📞 Calling GET /hostel-operations/photos');
-      const response = await ApiClient.get("/hostel-operations/photos");
+      let url = "/hostel-operations/photos";
+      
+      // Add query parameter if hostelId is provided
+      if (hostelId) {
+        url += `?hostelId=${hostelId}`;
+      }
+      
+      console.log('📞 Calling GET', url);
+      const response = await ApiClient.get(url);
 
       console.log('📸 Raw API Response:', JSON.stringify(response, null, 2));
 
-      // The response from Postman shows the data is directly in response.data
       return response;
     } catch (error: any) {
-      console.error("❌ Owner Get photos API error:", {
+      console.error("❌ Get photos API error:", {
         message: error.message,
         status: error.response?.status,
         data: error.response?.data
@@ -154,6 +182,19 @@ class HostelPhotoApi {
     } catch (error: any) {
       console.error("❌ Set primary photo error:", error);
       throw new Error(error.response?.data?.message || "Failed to set primary photo");
+    }
+  }
+
+  // Get all hostels photos summary
+  async getAllHostelsPhotosSummary(): Promise<any> {
+    try {
+      console.log('📊 Getting all hostels photos summary');
+      const response = await ApiClient.get("/hostel-operations/photos/summary");
+      console.log('✅ Photos summary:', response.data);
+      return response;
+    } catch (error: any) {
+      console.error("❌ Get photos summary error:", error);
+      throw new Error(error.response?.data?.message || "Failed to get photos summary");
     }
   }
 }

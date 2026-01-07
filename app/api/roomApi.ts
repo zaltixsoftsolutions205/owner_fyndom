@@ -1,6 +1,8 @@
+// app/api/roomApi.ts
 import ApiClient from "./ApiClient";
 
 export interface RoomData {
+  hostelId?: string;
   floor: string;
   roomNumber: string;
   sharingType: string;
@@ -12,31 +14,41 @@ export interface RoomResponse {
   success: boolean;
   message: string;
   data: {
-    hostelOwner: string;
-    floor: string;
-    roomNumber: string;
-    capacity: number;
-    occupied: number;
-    isAvailable: boolean;
-    _id: string;
-    remaining: number;
-    createdAt: string;
-    updatedAt: string;
-    __v: number;
+    room: {
+      hostelOwner: string;
+      hostelId: string;
+      floor: string;
+      roomNumber: string;
+      sharingType: string;
+      capacity: number;
+      occupied: number;
+      remaining: number;
+      isAvailable: boolean;
+      _id: string;
+      bookingHistory: any[];
+      createdAt: string;
+      updatedAt: string;
+      __v: number;
+    };
+    hostelInfo: {
+      hostelId: string;
+      hostelName: string;
+      hostelType: string;
+    };
   };
 }
 
-// Add this interface for the getAllRooms response
 export interface AllRoomsResponse {
   success: boolean;
   data: {
+    hostelInfo: {
+      hostelId: string;
+      hostelName: string;
+      hostelType: string;
+    };
     rooms: Room[];
     sharingTypeAvailability: {
-      single: RoomTypeAvailability;
-      double: RoomTypeAvailability;
-      triple: RoomTypeAvailability;
-      four: RoomTypeAvailability;
-      five: RoomTypeAvailability;
+      [key: string]: RoomTypeAvailability;
     };
     summary: {
       totalBeds: number;
@@ -57,11 +69,7 @@ export interface Room {
   remaining: number;
   isAvailable: boolean;
   status: string;
-  // Add these optional properties to match the RoomResponse data
-  hostelOwner?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  __v?: number;
+  hostelId?: string;
 }
 
 export interface RoomTypeAvailability {
@@ -71,9 +79,6 @@ export interface RoomTypeAvailability {
   totalBeds: number;
   availableBeds: number;
 }
-
-
-// ===============================================
 
 export interface HostelPhoto {
   _id: string;
@@ -89,10 +94,6 @@ export interface HostelPhotosResponse {
   data: HostelPhoto[];
 }
 
-
-// ==================================================================
-
-
 export interface FacilitiesResponse {
   success: boolean;
   data: {
@@ -107,13 +108,25 @@ export interface FacilitiesResponse {
   };
 }
 
-
+export interface DeleteRoomResponse {
+  success: boolean;
+  message: string;
+  data: {
+    deletedRoomId: string;
+    hostelId: string;
+  };
+}
 
 export const roomApi = {
   addRoom: async (roomData: RoomData): Promise<RoomResponse> => {
     console.log("🚀 Sending room data:", roomData);
     try {
-      const response = await ApiClient.post<RoomResponse>("/hostel-operations/add-room", roomData);
+      // Make sure hostelId is included
+      if (!roomData.hostelId) {
+        throw new Error("hostelId is required");
+      }
+      
+      const response = await ApiClient.post<RoomResponse>("/hostel-rooms/add", roomData);
       console.log("✅ Room API response:", response);
       return response;
     } catch (error: any) {
@@ -122,10 +135,10 @@ export const roomApi = {
     }
   },
 
-  // Get all rooms
-  getRooms: async (): Promise<AllRoomsResponse> => {
+  // Get all rooms for a specific hostel
+  getRooms: async (hostelId: string): Promise<AllRoomsResponse> => {
     try {
-      const response = await ApiClient.get<AllRoomsResponse>("/hostel-operations/rooms");
+      const response = await ApiClient.get<AllRoomsResponse>(`/hostel-rooms?hostelId=${hostelId}`);
       console.log("✅ Get all rooms API response:", response);
       return response;
     } catch (error: any) {
@@ -136,41 +149,35 @@ export const roomApi = {
 
   // Update room occupancy
   updateRoomOccupancy: async (roomId: string, occupied: number) => {
-    return await ApiClient.patch(`/hostel-operations/rooms/${roomId}/occupancy`, { occupied });
+    return await ApiClient.patch(`/hostel-rooms/${roomId}/occupancy`, { occupied });
   },
 
   // Delete room
-  deleteRoom: async (roomId: string) => {
-    return await ApiClient.delete(`/hostel-operations/rooms/${roomId}`);
+  deleteRoom: async (roomId: string): Promise<DeleteRoomResponse> => {
+    return await ApiClient.delete<DeleteRoomResponse>(`/hostel-rooms/delete/${roomId}`);
   },
 
+  // Get Hostel Photos
+  getHostelPhotos: async () => {
+    try {
+      const response = await ApiClient.get("/hostel-operations/photos");
+      console.log("📸 Get hostel photos API:", response);
+      return response;
+    } catch (error: any) {
+      console.log("❌ Get hostel photos API error:", error);
+      throw error;
+    }
+  },
 
-
-// Get Hostel Photos
-getHostelPhotos: async () => {
-  try {
-    const response = await ApiClient.get("/hostel-operations/photos");
-    console.log("📸 Get hostel photos API:", response);
-    return response;
-  } catch (error: any) {
-    console.log("❌ Get hostel photos API error:", error);
-    throw error;
-  }
-},
-
-
-
-// Get Hostel Facilities
-getFacilities: async () => {
-  try {
-    const response = await ApiClient.get("/hostel-operations/facilities");
-    console.log("🏨 Get facilities API:", response);
-    return response;
-  } catch (error: any) {
-    console.log("❌ Get facilities API error:", error);
-    throw error;
-  }
-},
-
-
+  // Get Hostel Facilities
+  getFacilities: async () => {
+    try {
+      const response = await ApiClient.get("/hostel-operations/facilities");
+      console.log("🏨 Get facilities API:", response);
+      return response;
+    } catch (error: any) {
+      console.log("❌ Get facilities API error:", error);
+      throw error;
+    }
+  },
 };

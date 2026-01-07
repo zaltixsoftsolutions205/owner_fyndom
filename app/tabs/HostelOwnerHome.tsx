@@ -1,1605 +1,3 @@
-// import React, { useEffect, useState, useCallback, useRef } from "react";
-// import {
-//   SafeAreaView,
-//   View,
-//   Text,
-//   TouchableOpacity,
-//   StyleSheet,
-//   ScrollView,
-//   Image,
-//   Dimensions,
-//   StatusBar,
-//   ActivityIndicator,
-//   FlatList,
-//   Platform,
-//   Modal,
-//   Animated,
-//   Easing,
-// } from "react-native";
-// import { LinearGradient } from "expo-linear-gradient";
-// import { useRouter } from "expo-router";
-// import * as Location from "expo-location";
-// import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
-// import SideNav from "../../components/SideNav";
-// import { useAppSelector } from "@/hooks/hooks";
-
-// const { width, height } = Dimensions.get("window");
-
-// const COLORS = {
-//   primary: "#00C72F",
-//   accent: "#FFD700", // Yellow color
-//   text: "#222",
-//   background: "#FFFFFF",
-//   cardShadow: "#00000010",
-//   heading: "#000000",
-//   subtitle: "#555555",
-// };
-
-// export default function HostelHome() {
-//   const router = useRouter();
-//   const [locationName, setLocationName] = useState<string | null>(null);
-//   const [locationStatus, setLocationStatus] = useState("pending");
-//   const [drawerVisible, setDrawerVisible] = useState(false);
-
-//   const [modalVisible, setModalVisible] = useState(false);
-//   const [selectedOffer, setSelectedOffer] = useState<any>(null);
-//   const scaleAnim = useRef(new Animated.Value(0)).current;
-
-//   const { loading, error, token,userId } = useAppSelector((state) => state.auth);
-//   console.log("userId",userId);
-  
-
-//   const banners = [
-//     require("../../assets/banners/banner1.jpg"),
-//     require("../../assets/banners/banner2.jpg"),
-//     require("../../assets/banners/banner3.jpg"),
-//     require("../../assets/banners/banner4.jpg"),
-//   ];
-  
-//   // Banner state and refs
-//   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
-//   const bannerScrollRef = useRef<FlatList>(null);
-
-//   // Auto-scroll banners
-//   useEffect(() => {
-//     const interval = setInterval(() => {
-//       const nextIndex = (currentBannerIndex + 1) % banners.length;
-//       setCurrentBannerIndex(nextIndex);
-//       bannerScrollRef.current?.scrollToIndex({
-//         index: nextIndex,
-//         animated: true,
-//       });
-//     }, 4000);
-//     return () => clearInterval(interval);
-//   }, [currentBannerIndex]);
-
-//   const loadLocation = useCallback(async () => {
-//     setLocationStatus("pending");
-//     try {
-//       const { status } = await Location.requestForegroundPermissionsAsync();
-//       if (status !== "granted") {
-//         setLocationStatus("denied");
-//         return;
-//       }
-//       const loc = await Location.getCurrentPositionAsync({});
-//       const address = await Location.reverseGeocodeAsync({
-//         latitude: loc.coords.latitude,
-//         longitude: loc.coords.longitude,
-//       });
-//       if (address.length > 0) {
-//         const place = address[0];
-//         setLocationName(
-//           `${place.city || place.subregion || ""}, ${place.region || ""}`
-//         );
-//       }
-//       setLocationStatus("granted");
-//     } catch {
-//       setLocationStatus("error");
-//     }
-//   }, []);
-
-//   useEffect(() => {
-//     loadLocation();
-//   }, [loadLocation]);
-
-//   const quickActions = [
-//     {
-//       label: "Upload",
-//       icon: require("../../assets/icons/upload.png"),
-//       route: "/UploadMedia",
-//       description: "Upload hostel details like images,\nrooms and facilities",
-//     },
-//     {
-//       label: "Price",
-//       icon: require("../../assets/icons/price.png"),
-//       route: "/Pricing",
-//       description: "Set or update pricing of rooms easily",
-//     },
-//     {
-//       label: "Rooms",
-//       icon: require("../../assets/icons/rooms.png"),
-//       route: "/RoomDetails",
-//       description: "View and manage your rooms",
-//     },
-//     {
-//       label: "Facilities",
-//       icon: require("../../assets/icons/facilities.png"),
-//       route: "/Facilities",
-//       description: "Update hostel amenities and services",
-//     },
-//     {
-//       label: "Summary",
-//       icon: require("../../assets/icons/summary.png"),
-//       route: "/Summary",
-//       description: "Post an overview summary and key details about your hostel to attract guests.",
-//     },
-//   ];
-
-//   const forYou = [
-//     {
-//       label: "Offers",
-//       icon: require("../../assets/icons/offers.png"),
-//       description:
-//         "Access exclusive hostel offers tailored for you, including seasonal discounts and special bundle deals. Don't miss out on saving while booking comfortable stays.",
-//     },
-//     {
-//       label: "Rewards",
-//       icon: require("../../assets/icons/rewards.png"),
-//       description:
-//         "Earn points on every booking and referral. Redeem rewards for free stays, upgrades, and special services in partner hostels.",
-//     },
-//     {
-//       label: "Discount",
-//       icon: require("../../assets/icons/discount.png"),
-//       description:
-//         "Get special festival and weekend discounts available only for registered users. Keep an eye on flash sales and limited-time offers.",
-//     },
-//     {
-//       label: "Coupons",
-//       icon: require("../../assets/icons/coupons.png"),
-//       description:
-//         "Apply promo codes to instantly reduce your booking amount. Check regularly for new coupons and maximize your savings.",
-//     },
-//   ];
-
-//   const openModal = (item: any) => {
-//     setSelectedOffer(item);
-//     setModalVisible(true);
-//     Animated.timing(scaleAnim, {
-//       toValue: 1,
-//       duration: 300,
-//       easing: Easing.out(Easing.ease),
-//       useNativeDriver: true,
-//     }).start();
-//   };
-
-//   const closeModal = () => {
-//     Animated.timing(scaleAnim, {
-//       toValue: 0,
-//       duration: 200,
-//       easing: Easing.in(Easing.ease),
-//       useNativeDriver: true,
-//     }).start(() => {
-//       setModalVisible(false);
-//       setSelectedOffer(null);
-//     });
-//   };
-
-//   const handleOverlayPress = () => {
-//     closeModal();
-//   };
-
-//   const checkHostelData = async () => {
-//     const data = {
-//       images: ["img1", "img2"],
-//       videos: ["video1"],
-//       location: "Some Location",
-//       pricing: { roomA: 5000, roomB: 6500, roomC: 8000 },
-//       rooms: [{ type: "A", price: 5000 }, { type: "B", price: 6500 }],
-//     };
-
-//     if (
-//       data.images &&
-//       data.images.length > 0 &&
-//       data.videos &&
-//       data.videos.length > 0 &&
-//       data.location &&
-//       data.pricing &&
-//       data.rooms &&
-//       data.rooms.length > 0
-//     ) {
-//       return true;
-//     }
-//     return false;
-//   };
-
-//   const handleManageHostels = async () => {
-//     const isDataReady = await checkHostelData();
-//     if (isDataReady) {
-//       router.push("/HostelDetails");
-//     } else {
-//       alert(
-//         "Please upload all images, videos, location, pricing, and room details before managing the hostel."
-//       );
-//     }
-//   };
-
-//   // Updated rooms data with sharing types and white background
-//   const rooms = [
-//     { 
-//       type: "Single Sharing", 
-//       price: "₹8000/month",
-//       capacity: "1 Person",
-//       icon: require("../../assets/icons/single-room.png"),
-//     },
-//     { 
-//       type: "Two Sharing", 
-//       price: "₹6500/month",
-//       capacity: "2 Persons", 
-//       icon: require("../../assets/icons/double-room.png"),
-//     },
-//     { 
-//       type: "Three Sharing", 
-//       price: "₹5000/month",
-//       capacity: "3 Persons",
-//       icon: require("../../assets/icons/triple-room.jpg"),
-//     },
-//     { 
-//       type: "Four Sharing", 
-//       price: "₹4000/month",
-//       capacity: "4 Persons",
-//       icon: require("../../assets/icons/four-sharing.jpg"),
-//     },
-//   ];
-
-//   const recentBookings = [
-//     { guest: "John Doe", room: "Single Sharing", date: "Oct 12 - Oct 15" },
-//     { guest: "Alice Smith", room: "Two Sharing", date: "Oct 10 - Oct 12" },
-//     { guest: "Bob Johnson", room: "Three Sharing", date: "Oct 5 - Oct 8" },
-//   ];
-
-//   const announcements = [
-//     { text: "New feature: Bulk upload images via CSV now live!" },
-//     { text: "HostelFest promo: 20% off on all bookings until Oct 31." },
-//   ];
-
-//   const statistics = [
-//     { label: "Bookings This Month", value: "45" },
-//     { label: "Occupancy Rate", value: "78%" },
-//     { label: "Total Earnings", value: "₹1,25,000" },
-//   ];
-
-//   const handleBannerScroll = (event: any) => {
-//     const contentOffset = event.nativeEvent.contentOffset;
-//     const viewSize = event.nativeEvent.layoutMeasurement;
-//     const pageNum = Math.floor(contentOffset.x / viewSize.width);
-//     setCurrentBannerIndex(pageNum);
-//   };
-
-//   const renderBannerItem = ({ item }: { item: any }) => (
-//     <View style={styles.bannerCard}>
-//       <Image source={item} style={styles.bannerImage} />
-//     </View>
-//   );
-
-//   // Banner pagination dots
-//   const renderPaginationDots = () => (
-//     <View style={styles.paginationContainer}>
-//       {banners.map((_, index) => (
-//         <View
-//           key={index}
-//           style={[
-//             styles.paginationDot,
-//             currentBannerIndex === index ? styles.paginationDotActive : styles.paginationDotInactive,
-//           ]}
-//         />
-//       ))}
-//     </View>
-//   );
-
-//   return (
-//     <SafeAreaView style={styles.safeArea} edges={["right", "left", "bottom"]}>
-//       <StatusBar backgroundColor={COLORS.background} barStyle="dark-content" />
-//       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 0 }}>
-//         {/* Header */}
-//         <View style={styles.header}>
-//           <TouchableOpacity onPress={() => setDrawerVisible(true)}>
-//             <Icon name="menu" size={28} color={COLORS.primary} />
-//           </TouchableOpacity>
-//           <Image source={require("../../assets/logo.png")} style={styles.logo} />
-//           <View style={styles.headerIcons}>
-//             <TouchableOpacity onPress={() => router.push("/Notifications")}>
-//               <Icon name="bell-outline" size={26} color={COLORS.accent} />
-//             </TouchableOpacity>
-//             <TouchableOpacity onPress={() => router.push("/Profile")}>
-//               <Icon name="account-circle-outline" size={28} color={COLORS.primary} />
-//             </TouchableOpacity>
-//           </View>
-//         </View>
-
-//         {/* Welcome */}
-//         <View style={styles.welcomeContainer}>
-//           <Text style={styles.welcomeText}>Welcome back, Owner 👋</Text>
-//           <Text style={styles.subText}>Connected Owner App</Text>
-//         </View>
-
-//         {/* Location */}
-//         <View style={styles.locationSection}>
-//           <Icon name="map-marker" size={20} color={COLORS.primary} />
-//           {locationStatus === "pending" && (
-//             <ActivityIndicator size="small" color={COLORS.primary} style={{ marginLeft: 8 }} />
-//           )}
-//           {locationStatus === "granted" && locationName && (
-//             <Text style={styles.locationText}>{locationName}</Text>
-//           )}
-//         </View>
-
-//         {/* Updated Banner Carousel */}
-//         <View style={styles.bannerSection}>
-//           <FlatList
-//             ref={bannerScrollRef}
-//             data={banners}
-//             renderItem={renderBannerItem}
-//             keyExtractor={(_, index) => `banner-${index}`}
-//             horizontal
-//             pagingEnabled
-//             showsHorizontalScrollIndicator={false}
-//             onScroll={handleBannerScroll}
-//             scrollEventThrottle={16}
-//             getItemLayout={(_, index) => ({
-//               length: width,
-//               offset: width * index,
-//               index,
-//             })}
-//           />
-//           {renderPaginationDots()}
-//         </View>
-
-//         {/* Quick Actions */}
-//         <Text style={styles.sectionTitle}>Quick Actions</Text>
-//         <View style={styles.iconGrid}>
-//           {quickActions.map((item, index) => (
-//             <TouchableOpacity
-//               key={index}
-//               style={styles.iconCard}
-//               activeOpacity={0.8}
-//               onPress={() => router.push(item.route as any)}
-//             >
-//               <View style={styles.iconCircle}>
-//                 <Image source={item.icon} style={styles.iconImage} />
-//               </View>
-//               <Text style={styles.iconLabel}>{item.label}</Text>
-//             </TouchableOpacity>
-//           ))}
-//         </View>
-
-//         {/* Description Cards */}
-//         <FlatList
-//           data={quickActions}
-//           keyExtractor={(_, index) => index.toString()}
-//           horizontal
-//           showsHorizontalScrollIndicator={false}
-//           style={{ marginVertical: 16, paddingLeft: 16 }}
-//           renderItem={({ item, index }) => (
-//             <View style={styles.descriptionCard}>
-//               <Image
-//                 source={
-//                   index === 0
-//                     ? require("../../assets/icons/upload_alt.png")
-//                     : index === 1
-//                     ? require("../../assets/icons/price_alt.png")
-//                     : index === 2
-//                     ? require("../../assets/icons/rooms_alt.png")
-//                     : index === 3
-//                     ? require("../../assets/icons/facilities_alt.png")
-//                     : require("../../assets/icons/summary_alt.png")
-//                 }
-//                 style={styles.descIcon}
-//               />
-//               <View style={styles.descTextContainer}>
-//                 <Text style={styles.descTitle}>{item.label}</Text>
-//                 <Text style={styles.descText}>{item.description}</Text>
-//               </View>
-//             </View>
-//           )}
-//         />
-
-//         {/* For You */}
-//         <Text style={styles.sectionTitle}>For You</Text>
-//         <View style={styles.iconGridSmall}>
-//           {forYou.map((item, index) => (
-//             <TouchableOpacity
-//               key={index}
-//               style={styles.iconCardSmall}
-//               activeOpacity={0.8}
-//               onPress={() => openModal(item)}
-//             >
-//               <View style={styles.iconCircleSmall}>
-//                 <Image source={item.icon} style={styles.iconImageSmall} />
-//               </View>
-//               <Text style={styles.iconLabelSmall}>{item.label}</Text>
-//             </TouchableOpacity>
-//           ))}
-//         </View>
-
-//         {/* Updated Rooms as Cards with smaller size and white background */}
-//         <Text style={styles.sectionTitle}>Available Rooms</Text>
-//         <View style={styles.roomsContainer}>
-//           {rooms.map((room, index) => (
-//             <TouchableOpacity
-//               key={index}
-//               style={styles.roomCard}
-//               activeOpacity={0.8}
-//               onPress={() => router.push("/Rooms")}
-//             >
-//               <Image source={room.icon} style={styles.roomIcon} />
-//               <Text style={styles.roomType}>{room.type}</Text>
-//               <Text style={styles.roomCapacity}>{room.capacity}</Text>
-//               <Text style={styles.roomPrice}>{room.price}</Text>
-//               <View style={styles.roomBadge}>
-//                 <Text style={styles.roomBadgeText}>Available</Text>
-//               </View>
-//             </TouchableOpacity>
-//           ))}
-//         </View>
-
-//         {/* Recent Bookings */}
-//         <Text style={styles.sectionTitle}>Recent Bookings</Text>
-//         <ScrollView
-//           horizontal
-//           showsHorizontalScrollIndicator={false}
-//           style={{ paddingLeft: 16, marginBottom: 16 }}
-//         >
-//           {recentBookings.map((booking, index) => (
-//             <View key={index} style={styles.bookingCard}>
-//               <Text style={styles.bookingGuest}>{booking.guest}</Text>
-//               <Text style={styles.bookingRoom}>{booking.room}</Text>
-//               <Text style={styles.bookingDate}>{booking.date}</Text>
-//             </View>
-//           ))}
-//         </ScrollView>
-
-//         {/* Tips & Announcements */}
-//         <Text style={styles.sectionTitle}>Tips & Announcements</Text>
-//         <View style={styles.announcementContainer}>
-//           {announcements.map((item, index) => (
-//             <View key={index} style={styles.announcementCard}>
-//               <Text style={styles.announcementText}>{item.text}</Text>
-//             </View>
-//           ))}
-//         </View>
-
-//         {/* Statistics Summary */}
-//         <Text style={styles.sectionTitle}>Statistics</Text>
-//         <View style={styles.statisticsRow}>
-//           {statistics.map((stat, index) => (
-//             <View key={index} style={styles.statisticsCard}>
-//               <Text style={styles.statisticsValue}>{stat.value}</Text>
-//               <Text style={styles.statisticsLabel}>{stat.label}</Text>
-//             </View>
-//           ))}
-//         </View>
-
-//         {/* Manage Hostels Button */}
-//         <TouchableOpacity style={styles.manageButton} onPress={handleManageHostels}>
-//           <LinearGradient colors={[COLORS.primary, "#02b828"]} style={styles.manageGradient}>
-//             <Text style={styles.manageText}>Manage Hostels</Text>
-//           </LinearGradient>
-//         </TouchableOpacity>
-//       </ScrollView>
-
-//       {/* Updated SideNav with proper navigation */}
-//       <SideNav 
-//         visible={drawerVisible} 
-//         onClose={() => setDrawerVisible(false)}
-//         currentRoute="/HostelHome"
-//         onNavigate={(route) => {
-//           setDrawerVisible(false);
-//           router.push(route as any);
-//         }}
-//       />
-
-//       {/* Updated Modal Popup */}
-//       <Modal 
-//         visible={modalVisible} 
-//         transparent 
-//         animationType="fade" 
-//         onRequestClose={closeModal}
-//       >
-//         <TouchableOpacity 
-//           style={styles.modalOverlay} 
-//           activeOpacity={1} 
-//           onPress={handleOverlayPress}
-//         >
-//           <View style={styles.modalOverlayContent}>
-//             <TouchableOpacity 
-//               activeOpacity={1} 
-//               onPress={(e) => e.stopPropagation()}
-//             >
-//               <Animated.View 
-//                 style={[
-//                   styles.modalContent, 
-//                   { transform: [{ scale: scaleAnim }] }
-//                 ]}
-//               >
-//                 <View style={styles.modalIconWrapper}>
-//                   {selectedOffer && (
-//                     <Image 
-//                       source={selectedOffer.icon} 
-//                       style={[
-//                         styles.modalIcon,
-//                         { tintColor: COLORS.accent }
-//                       ]} 
-//                     />
-//                   )}
-//                 </View>
-//                 <Text style={styles.modalTitle}>{selectedOffer?.label}</Text>
-//                 <Text style={styles.modalDescription}>{selectedOffer?.description}</Text>
-//                 <TouchableOpacity 
-//                   onPress={closeModal} 
-//                   style={[
-//                     styles.modalCloseButton,
-//                     { backgroundColor: COLORS.accent }
-//                   ]}
-//                 >
-//                   <Text style={styles.modalCloseText}>Close</Text>
-//                 </TouchableOpacity>
-//               </Animated.View>
-//             </TouchableOpacity>
-//           </View>
-//         </TouchableOpacity>
-//       </Modal>
-//     </SafeAreaView>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   safeArea: {
-//     flex: 1,
-//     backgroundColor: COLORS.background,
-//     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-//   },
-//   header: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "space-between",
-//     paddingHorizontal: 16,
-//     paddingVertical: 10,
-//     backgroundColor: COLORS.background,
-//     borderBottomWidth: 1,
-//     borderColor: "#eee",
-//   },
-//   logo: { width: 120, height: 50, resizeMode: "contain" },
-//   headerIcons: { flexDirection: "row", alignItems: "center", gap: 12 },
-
-//   welcomeContainer: { paddingHorizontal: 16, marginTop: 12 },
-//   welcomeText: { fontSize: 20, fontWeight: "700", color: COLORS.heading },
-//   subText: { fontSize: 13, color: COLORS.subtitle, marginTop: 4 },
-
-//   locationSection: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     paddingHorizontal: 16,
-//     marginVertical: 10,
-//   },
-//   locationText: { fontSize: 13, color: COLORS.subtitle, marginLeft: 6 },
-
-//   // Updated Banner Styles
-//   bannerSection: {
-//     marginVertical: 10,
-//     position: 'relative',
-//   },
-//   bannerCard: {
-//     width: width - 32,
-//     height: 170,
-//     borderRadius: 12,
-//     overflow: "hidden",
-//     marginHorizontal: 16,
-//   },
-//   bannerImage: {
-//     width: "100%",
-//     height: "100%",
-//     borderRadius: 12,
-//     resizeMode: "cover",
-//   },
-//   paginationContainer: {
-//     flexDirection: 'row',
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//     marginTop: 8,
-//   },
-//   paginationDot: {
-//     width: 8,
-//     height: 8,
-//     borderRadius: 4,
-//     marginHorizontal: 4,
-//   },
-//   paginationDotActive: {
-//     backgroundColor: COLORS.primary,
-//     width: 20,
-//   },
-//   paginationDotInactive: {
-//     backgroundColor: '#ccc',
-//   },
-
-//   sectionTitle: {
-//     fontSize: 18,
-//     fontWeight: "700",
-//     color: COLORS.heading,
-//     marginTop: 16,
-//     marginBottom: 10,
-//     paddingHorizontal: 16,
-//   },
-
-//   iconGrid: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 16 },
-//   iconCard: { width: width / 5, alignItems: "center" },
-//   iconCircle: {
-//     width: 70,
-//     height: 70,
-//     borderRadius: 35,
-//     backgroundColor: "#f6f6f6",
-//     justifyContent: "center",
-//     alignItems: "center",
-//     shadowColor: COLORS.cardShadow,
-//     shadowOpacity: 0.3,
-//     shadowRadius: 4,
-//     shadowOffset: { width: 0, height: 2 },
-//   },
-//   iconImage: { width: 38, height: 38, resizeMode: "contain" },
-//   iconLabel: { fontSize: 13, fontWeight: "600", color: COLORS.subtitle, marginTop: 4 },
-
-//   descriptionCard: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     backgroundColor: "#D0E8FF",
-//     marginRight: 16,
-//     padding: 16,
-//     borderRadius: 16,
-//     shadowColor: COLORS.cardShadow,
-//     shadowOpacity: 0.15,
-//     shadowRadius: 6,
-//     shadowOffset: { width: 0, height: 3 },
-//     minWidth: width * 0.45,
-//     height: 120,
-//   },
-//   descIcon: { width: 45, height: 45, resizeMode: "contain", marginRight: 14 },
-//   descTextContainer: { flex: 1 },
-//   descTitle: { fontSize: 16, fontWeight: "700", color: COLORS.heading, marginBottom: 6 },
-//   descText: { fontSize: 13, color: COLORS.subtitle, lineHeight: 18 },
-
-//   iconGridSmall: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 16 },
-//   iconCardSmall: { width: width / 5, alignItems: "center" },
-//   iconCircleSmall: {
-//     width: 55,
-//     height: 55,
-//     borderRadius: 27.5,
-//     backgroundColor: "#fff",
-//     borderWidth: 1.2,
-//     borderColor: "#eee",
-//     justifyContent: "center",
-//     alignItems: "center",
-//   },
-//   iconImageSmall: { width: 35, height: 35, resizeMode: "contain" },
-//   iconLabelSmall: { fontSize: 12, color: COLORS.subtitle, marginTop: 4 },
-
-//   // Updated Rooms Container Styles - Smaller cards with white background
-//   roomsContainer: {
-//     flexDirection: "row",
-//     flexWrap: "wrap",
-//     justifyContent: "space-between",
-//     marginHorizontal: 16,
-//     gap: 10,
-//   },
-//   roomCard: {
-//     width: (width - 52) / 2, // Smaller width
-//     backgroundColor: "#FFFFFF", // White background
-//     borderRadius: 12,
-//     padding: 12, // Reduced padding
-//     marginBottom: 10,
-//     alignItems: "center",
-//     shadowColor: "#000",
-//     shadowOpacity: 0.08,
-//     shadowRadius: 6,
-//     shadowOffset: { width: 0, height: 2 },
-//     elevation: 3,
-//     borderWidth: 1,
-//     borderColor: "#f0f0f0",
-//     position: 'relative',
-//   },
-//   roomIcon: {
-//     width: 40, // Smaller icon
-//     height: 40,
-//     marginBottom: 8,
-//     resizeMode: "contain",
-//   },
-//   roomType: {
-//     fontSize: 13, // Smaller font
-//     fontWeight: "700",
-//     color: COLORS.heading,
-//     marginBottom: 4,
-//     textAlign: 'center',
-//   },
-//   roomCapacity: {
-//     fontSize: 11, // Smaller font
-//     color: COLORS.subtitle,
-//     marginBottom: 4,
-//     textAlign: 'center',
-//   },
-//   roomPrice: {
-//     fontSize: 12, // Smaller font
-//     fontWeight: "600",
-//     color: COLORS.primary,
-//     marginBottom: 6,
-//   },
-//   roomBadge: {
-//     position: 'absolute',
-//     top: 8,
-//     right: 8,
-//     backgroundColor: COLORS.primary,
-//     paddingHorizontal: 6,
-//     paddingVertical: 2,
-//     borderRadius: 8,
-//   },
-//   roomBadgeText: {
-//     color: '#fff',
-//     fontSize: 9, // Smaller font
-//     fontWeight: '600',
-//   },
-
-//   manageButton: { marginHorizontal: 16, marginVertical: 24, borderRadius: 12, overflow: "hidden" },
-//   manageGradient: { paddingVertical: 14, justifyContent: "center", alignItems: "center" },
-//   manageText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-
-//   // Modal Styles
-//   modalOverlay: {
-//     flex: 1,
-//     backgroundColor: "rgba(0,0,0,0.5)",
-//   },
-//   modalOverlayContent: {
-//     flex: 1,
-//     justifyContent: "center",
-//     alignItems: "center",
-//   },
-//   modalContent: {
-//     width: width * 0.8,
-//     backgroundColor: "#fff",
-//     borderRadius: 16,
-//     padding: 24,
-//     alignItems: "center",
-//     shadowColor: "#000",
-//     shadowOpacity: 0.3,
-//     shadowRadius: 10,
-//     shadowOffset: { width: 0, height: 5 },
-//     elevation: 10,
-//   },
-//   modalIconWrapper: {
-//     backgroundColor: "#FFF9C4",
-//     padding: 16,
-//     borderRadius: 50,
-//     marginBottom: 16,
-//     borderWidth: 2,
-//     borderColor: COLORS.accent,
-//   },
-//   modalIcon: {
-//     width: 48,
-//     height: 48,
-//     resizeMode: "contain",
-//   },
-//   modalTitle: {
-//     fontSize: 22,
-//     fontWeight: "700",
-//     color: COLORS.heading,
-//     marginBottom: 12,
-//     textAlign: "center",
-//   },
-//   modalDescription: {
-//     fontSize: 15,
-//     color: COLORS.text,
-//     textAlign: "center",
-//     marginBottom: 24,
-//     lineHeight: 22,
-//   },
-//   modalCloseButton: {
-//     paddingVertical: 12,
-//     paddingHorizontal: 40,
-//     borderRadius: 25,
-//     minWidth: 120,
-//   },
-//   modalCloseText: {
-//     color: "#000",
-//     fontWeight: "700",
-//     fontSize: 16,
-//     textAlign: "center",
-//   },
-
-//   bookingCard: {
-//     backgroundColor: "#e6f2ff",
-//     borderRadius: 12,
-//     padding: 12,
-//     marginRight: 12,
-//     width: 160,
-//   },
-//   bookingGuest: { fontSize: 14, fontWeight: "700", color: COLORS.heading },
-//   bookingRoom: { fontSize: 13, color: COLORS.subtitle, marginVertical: 4 },
-//   bookingDate: { fontSize: 12, color: COLORS.subtitle },
-
-//   announcementContainer: { paddingHorizontal: 16, marginBottom: 16 },
-//   announcementCard: {
-//     backgroundColor: "#fff4e6",
-//     padding: 12,
-//     borderRadius: 12,
-//     marginBottom: 8,
-//   },
-//   announcementText: { fontSize: 14, color: "#774d00" },
-
-//   statisticsRow: {
-//     flexDirection: "row",
-//     justifyContent: "space-between",
-//     paddingHorizontal: 16,
-//     marginBottom: 24,
-//   },
-//   statisticsCard: {
-//     alignItems: "center",
-//     backgroundColor: "#e6ffe6",
-//     borderRadius: 12,
-//     paddingVertical: 16,
-//     paddingHorizontal: 12,
-//     flex: 1,
-//     marginHorizontal: 6,
-//   },
-//   statisticsValue: {
-//     fontSize: 18,
-//     fontWeight: "700",
-//     color: COLORS.primary,
-//   },
-//   statisticsLabel: {
-//     fontSize: 13,
-//     color: COLORS.subtitle,
-//     marginTop: 4,
-//     textAlign: "center",
-//   },
-// });
-
-
-//------------------------------------------------------------------------------------------------------------
-
-// import React, { useEffect, useState, useCallback, useRef } from "react";
-// import {
-//   SafeAreaView,
-//   View,
-//   Text,
-//   TouchableOpacity,
-//   StyleSheet,
-//   ScrollView,
-//   Image,
-//   Dimensions,
-//   StatusBar,
-//   ActivityIndicator,
-//   FlatList,
-//   Platform,
-//   Modal,
-//   Animated,
-//   Easing,
-// } from "react-native";
-// import { LinearGradient } from "expo-linear-gradient";
-// import { useRouter } from "expo-router";
-// import * as Location from "expo-location";
-// import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
-// import SideNav from "../../components/SideNav";
-// import { useAppSelector } from "@/hooks/hooks";
-
-// const { width } = Dimensions.get("window");
-
-// const COLORS = {
-//   primary: "#00C72F", // Green
-//   accent: "#FFD700", // Yellow
-//   text: "#222",
-//   background: "#FFFFFF",
-//   cardShadow: "#00000010",
-//   heading: "#000000",
-//   subtitle: "#555555",
-// };
-
-// export default function HostelHome() {
-//   const router = useRouter();
-//   const [locationName, setLocationName] = useState<string | null>(null);
-//   const [locationStatus, setLocationStatus] = useState("pending");
-//   const [drawerVisible, setDrawerVisible] = useState(false);
-
-//   const [modalVisible, setModalVisible] = useState(false);
-//   const [selectedOffer, setSelectedOffer] = useState<any>(null);
-//   const scaleAnim = useRef(new Animated.Value(0)).current;
-
-//   const { loading, error, token, userId } = useAppSelector((state) => state.auth);
-//   console.log("userId", userId);
-
-//   const banners = [
-//     require("../../assets/banners/banner1.jpg"),
-//     require("../../assets/banners/banner2.jpg"),
-//     require("../../assets/banners/banner3.jpg"),
-//     require("../../assets/banners/banner4.jpg"),
-//   ];
-
-//   // Banner state and refs
-//   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
-//   const bannerScrollRef = useRef<FlatList>(null);
-
-//   // Auto-scroll banners
-//   useEffect(() => {
-//     const interval = setInterval(() => {
-//       const nextIndex = (currentBannerIndex + 1) % banners.length;
-//       setCurrentBannerIndex(nextIndex);
-//       bannerScrollRef.current?.scrollToIndex({
-//         index: nextIndex,
-//         animated: true,
-//       });
-//     }, 4000);
-//     return () => clearInterval(interval);
-//   }, [currentBannerIndex]);
-
-//   const loadLocation = useCallback(async () => {
-//     setLocationStatus("pending");
-//     try {
-//       const { status } = await Location.requestForegroundPermissionsAsync();
-//       if (status !== "granted") {
-//         setLocationStatus("denied");
-//         return;
-//       }
-//       const loc = await Location.getCurrentPositionAsync({});
-//       const address = await Location.reverseGeocodeAsync({
-//         latitude: loc.coords.latitude,
-//         longitude: loc.coords.longitude,
-//       });
-//       if (address.length > 0) {
-//         const place = address[0];
-//         setLocationName(
-//           `${place.city || place.subregion || ""}, ${place.region || ""}`
-//         );
-//       }
-//       setLocationStatus("granted");
-//     } catch {
-//       setLocationStatus("error");
-//     }
-//   }, []);
-
-//   useEffect(() => {
-//     loadLocation();
-//   }, [loadLocation]);
-
-//   const quickActions = [
-//     {
-//       label: "Upload",
-//       icon: require("../../assets/icons/upload.png"),
-//       route: "/UploadMedia",
-//       description: "Upload hostel details like images,\nrooms and facilities",
-//     },
-//     {
-//       label: "Price",
-//       icon: require("../../assets/icons/price.png"),
-//       route: "/Pricing",
-//       description: "Set or update pricing of rooms easily",
-//     },
-//     {
-//       label: "Rooms",
-//       icon: require("../../assets/icons/rooms.png"),
-//       route: "/RoomDetails",
-//       description: "View and manage your rooms",
-//     },
-//     {
-//       label: "Facilities",
-//       icon: require("../../assets/icons/facilities.png"),
-//       route: "/Facilities",
-//       description: "Update hostel amenities and services",
-//     },
-//     {
-//       label: "Summary",
-//       icon: require("../../assets/icons/summary.png"),
-//       route: "/Summary",
-//       description: "Post an overview summary and key details about your hostel to attract guests.",
-//     },
-//     {
-//       label: "Bank Details",
-//       icon: require("../../assets/icons/bank.png"),
-//       route: "/BankDetailsPage",
-//       description: "Add or update your bank account details for easy payouts.",
-//     },
-//   ];
-
-//   const forYou = [
-//     {
-//       label: "Offers",
-//       icon: require("../../assets/icons/offers.png"),
-//       description:
-//         "Access exclusive hostel offers tailored for you, including seasonal discounts and special bundle deals. Don't miss out on saving while booking comfortable stays.",
-//     },
-//     {
-//       label: "Rewards",
-//       icon: require("../../assets/icons/rewards.png"),
-//       description:
-//         "Earn points on every booking and referral. Redeem rewards for free stays, upgrades, and special services in partner hostels.",
-//     },
-//     {
-//       label: "Discount",
-//       icon: require("../../assets/icons/discount.png"),
-//       description:
-//         "Get special festival and weekend discounts available only for registered users. Keep an eye on flash sales and limited-time offers.",
-//     },
-//     {
-//       label: "Coupons",
-//       icon: require("../../assets/icons/coupons.png"),
-//       description:
-//         "Apply promo codes to instantly reduce your booking amount. Check regularly for new coupons and maximize your savings.",
-//     },
-//   ];
-
-//   const openModal = (item: any) => {
-//     setSelectedOffer(item);
-//     setModalVisible(true);
-//     Animated.timing(scaleAnim, {
-//       toValue: 1,
-//       duration: 300,
-//       easing: Easing.out(Easing.ease),
-//       useNativeDriver: true,
-//     }).start();
-//   };
-
-//   const closeModal = () => {
-//     Animated.timing(scaleAnim, {
-//       toValue: 0,
-//       duration: 200,
-//       easing: Easing.in(Easing.ease),
-//       useNativeDriver: true,
-//     }).start(() => {
-//       setModalVisible(false);
-//       setSelectedOffer(null);
-//     });
-//   };
-
-//   const handleOverlayPress = () => {
-//     closeModal();
-//   };
-
-//   const checkHostelData = async () => {
-//     const data = {
-//       images: ["img1", "img2"],
-//       videos: ["video1"],
-//       location: "Some Location",
-//       pricing: { roomA: 5000, roomB: 6500, roomC: 8000 },
-//       rooms: [{ type: "A", price: 5000 }, { type: "B", price: 6500 }],
-//     };
-
-//     if (
-//       data.images &&
-//       data.images.length > 0 &&
-//       data.videos &&
-//       data.videos.length > 0 &&
-//       data.location &&
-//       data.pricing &&
-//       data.rooms &&
-//       data.rooms.length > 0
-//     ) {
-//       return true;
-//     }
-//     return false;
-//   };
-
-//   const handleManageHostels = async () => {
-//     const isDataReady = await checkHostelData();
-//     if (isDataReady) {
-//       router.push("/HostelDetails");
-//     } else {
-//       alert(
-//         "Please upload all images, videos, location, pricing, and room details before managing the hostel."
-//       );
-//     }
-//   };
-
-//   const renderBannerItem = ({ item }: { item: any }) => (
-//     <View style={styles.bannerCard}>
-//       <Image source={item} style={styles.bannerImage} />
-//     </View>
-//   );
-
-//   // Banner pagination dots
-//   const renderPaginationDots = () => (
-//     <View style={styles.paginationContainer}>
-//       {banners.map((_, index) => (
-//         <View
-//           key={index}
-//           style={[
-//             styles.paginationDot,
-//             currentBannerIndex === index ? styles.paginationDotActive : styles.paginationDotInactive,
-//           ]}
-//         />
-//       ))}
-//     </View>
-//   );
-
-//   return (
-//     <SafeAreaView style={styles.safeArea} edges={["right", "left", "bottom"]}>
-//       <StatusBar backgroundColor={COLORS.background} barStyle="dark-content" />
-//       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 0 }}>
-//         {/* Header */}
-//         <View style={styles.header}>
-//           <TouchableOpacity onPress={() => setDrawerVisible(true)}>
-//             <Icon name="menu" size={28} color={COLORS.primary} />
-//           </TouchableOpacity>
-//           <Image source={require("../../assets/logo.png")} style={styles.logo} />
-//           <View style={styles.headerIcons}>
-//             <TouchableOpacity onPress={() => router.push("/Notifications")}>
-//               <Icon name="bell-outline" size={26} color={COLORS.accent} />
-//             </TouchableOpacity>
-//             <TouchableOpacity onPress={() => router.push("/Profile")}>
-//               <Icon name="account-circle-outline" size={28} color={COLORS.primary} />
-//             </TouchableOpacity>
-//           </View>
-//         </View>
-
-//         {/* Welcome */}
-//         <View style={styles.welcomeContainer}>
-//           <Text style={styles.welcomeText}>Welcome back, Owner 👋</Text>
-//           <Text style={styles.subText}>Connected Owner App</Text>
-//         </View>
-
-//         {/* Location */}
-//         <View style={styles.locationSection}>
-//           <Icon name="map-marker" size={20} color={COLORS.primary} />
-//           {locationStatus === "pending" && (
-//             <ActivityIndicator size="small" color={COLORS.primary} style={{ marginLeft: 8 }} />
-//           )}
-//           {locationStatus === "granted" && locationName && (
-//             <Text style={styles.locationText}>{locationName}</Text>
-//           )}
-//         </View>
-
-//         {/* Banner Carousel */}
-//         <View style={styles.bannerSection}>
-//           <FlatList
-//             ref={bannerScrollRef}
-//             data={banners}
-//             renderItem={renderBannerItem}
-//             keyExtractor={(_, index) => `banner-${index}`}
-//             horizontal
-//             pagingEnabled
-//             showsHorizontalScrollIndicator={false}
-//             onScroll={(e) => {
-//               const offsetX = e.nativeEvent.contentOffset.x;
-//               const page = Math.round(offsetX / width);
-//               setCurrentBannerIndex(page);
-//             }}
-//             scrollEventThrottle={16}
-//             getItemLayout={(_, index) => ({
-//               length: width,
-//               offset: width * index,
-//               index,
-//             })}
-//           />
-//           {renderPaginationDots()}
-//         </View>
-
-//         {/* Quick Actions (3 per row) */}
-//         <Text style={styles.sectionTitle}>Quick Actions</Text>
-//         <View style={styles.iconGrid}>
-//           {quickActions.map((item, index) => (
-//             <TouchableOpacity
-//               key={index}
-//               style={styles.iconCard}
-//               activeOpacity={0.8}
-//               onPress={() => router.push(item.route as any)}
-//             >
-//               <View style={styles.iconCircle}>
-//                 <Image source={item.icon} style={styles.iconImage} />
-//               </View>
-//               <Text style={styles.iconLabel}>{item.label}</Text>
-//             </TouchableOpacity>
-//           ))}
-//         </View>
-
-//         {/* Description Cards */}
-//         <FlatList
-//           data={quickActions}
-//           keyExtractor={(_, index) => index.toString()}
-//           horizontal
-//           showsHorizontalScrollIndicator={false}
-//           style={{ marginVertical: 16, paddingLeft: 16 }}
-//           renderItem={({ item, index }) => (
-//             <View style={styles.descriptionCard}>
-//               <Image
-//                 source={
-//                   index === 0
-//                     ? require("../../assets/icons/upload_alt.png")
-//                     : index === 1
-//                     ? require("../../assets/icons/price_alt.png")
-//                     : index === 2
-//                     ? require("../../assets/icons/rooms_alt.png")
-//                     : index === 3
-//                     ? require("../../assets/icons/facilities_alt.png")
-//                     : index === 4
-//                     ? require("../../assets/icons/summary_alt.png")
-//                     : require("../../assets/icons/bank_alt.png")
-//                 }
-//                 style={styles.descIcon}
-//               />
-//               <View style={styles.descTextContainer}>
-//                 <Text style={styles.descTitle}>{item.label}</Text>
-//                 <Text style={styles.descText}>{item.description}</Text>
-//               </View>
-//             </View>
-//           )}
-//         />
-
-//         {/* For You */}
-//         <Text style={styles.sectionTitle}>For You</Text>
-//         <View style={styles.iconGridSmall}>
-//           {forYou.map((item, index) => (
-//             <TouchableOpacity
-//               key={index}
-//               style={styles.iconCardSmall}
-//               activeOpacity={0.8}
-//               onPress={() => openModal(item)}
-//             >
-//               <View style={styles.iconCircleSmall}>
-//                 <Image source={item.icon} style={styles.iconImageSmall} />
-//               </View>
-//               <Text style={styles.iconLabelSmall}>{item.label}</Text>
-//             </TouchableOpacity>
-//           ))}
-//         </View>
-
-//         {/* About the App */}
-//         <Text style={styles.sectionTitle}>About the App</Text>
-//         <View style={styles.aboutCard}>
-//           <Text style={styles.aboutText}>
-//             Hostel Owner App is your complete platform for managing hostels efficiently. Easily update your hostel details, pricing, rooms, and facilities.
-//           </Text>
-//           <Text style={styles.aboutText}>
-//             Designed for hostel owners to maximize bookings and manage rewards, offers, and payouts with ease.
-//           </Text>
-//         </View>
-
-//         {/* Contact & Helpline */}
-//         <Text style={styles.sectionTitle}>Contact & Helpline</Text>
-//         <View style={styles.helpCard}>
-//           <View style={styles.helpItem}>
-//             <Icon name="phone" size={20} color={COLORS.primary} />
-//             <Text style={styles.helpText}>+91 98765 43210</Text>
-//           </View>
-//           <View style={styles.helpItem}>
-//             <Icon name="email" size={20} color={COLORS.primary} />
-//             <Text style={styles.helpText}>support@hostelapp.com</Text>
-//           </View>
-//           <View style={styles.helpItem}>
-//             <Icon name="whatsapp" size={20} color={COLORS.primary} />
-//             <Text style={styles.helpText}>Chat on WhatsApp</Text>
-//           </View>
-//           <TouchableOpacity
-//             style={styles.helpButton}
-//             onPress={() => alert("Chat support coming soon")}
-//           >
-//             <LinearGradient colors={[COLORS.primary, "#02b828"]} style={styles.helpGradient}>
-//               <Text style={styles.helpButtonText}>Chat with Support</Text>
-//             </LinearGradient>
-//           </TouchableOpacity>
-//         </View>
-
-//         {/* Manage Hostels Button */}
-//         <TouchableOpacity style={styles.manageButton} onPress={handleManageHostels}>
-//           <LinearGradient colors={[COLORS.primary, "#02b828"]} style={styles.manageGradient}>
-//             <Text style={styles.manageText}>Manage Hostels</Text>
-//           </LinearGradient>
-//         </TouchableOpacity>
-//       </ScrollView>
-
-//       {/* Side navigation drawer */}
-//       <SideNav
-//         visible={drawerVisible}
-//         onClose={() => setDrawerVisible(false)}
-//         currentRoute="/HostelHome"
-//         onNavigate={(route) => {
-//           setDrawerVisible(false);
-//           router.push(route as any);
-//         }}
-//       />
-
-//       {/* Modal for For You quick actions */}
-//       <Modal
-//         visible={modalVisible}
-//         transparent
-//         animationType="fade"
-//         onRequestClose={closeModal}
-//       >
-//         <TouchableOpacity
-//           style={styles.modalOverlay}
-//           activeOpacity={1}
-//           onPress={handleOverlayPress}
-//         >
-//           <View style={styles.modalOverlayContent}>
-//             <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation()}>
-//               <Animated.View style={[styles.modalContent, { transform: [{ scale: scaleAnim }] }]}>
-//                 <View style={styles.modalIconWrapper}>
-//                   {selectedOffer && (
-//                     <Image
-//                       source={selectedOffer.icon}
-//                       style={[styles.modalIcon, { tintColor: COLORS.accent }]}
-//                     />
-//                   )}
-//                 </View>
-//                 <Text style={styles.modalTitle}>{selectedOffer?.label}</Text>
-//                 <Text style={styles.modalDescription}>{selectedOffer?.description}</Text>
-//                 <TouchableOpacity
-//                   onPress={closeModal}
-//                   style={[styles.modalCloseButton, { backgroundColor: COLORS.accent }]}
-//                 >
-//                   <Text style={styles.modalCloseText}>Close</Text>
-//                 </TouchableOpacity>
-//               </Animated.View>
-//             </TouchableOpacity>
-//           </View>
-//         </TouchableOpacity>
-//       </Modal>
-//     </SafeAreaView>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   safeArea: {
-//     flex: 1,
-//     backgroundColor: COLORS.background,
-//     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-//   },
-//   header: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     justifyContent: "space-between",
-//     paddingHorizontal: 16,
-//     paddingVertical: 10,
-//     backgroundColor: COLORS.background,
-//     borderBottomWidth: 1,
-//     borderColor: "#eee",
-//   },
-//   logo: { width: 120, height: 50, resizeMode: "contain" },
-//   headerIcons: { flexDirection: "row", alignItems: "center", gap: 12 },
-
-//   welcomeContainer: { paddingHorizontal: 16, marginTop: 12 },
-//   welcomeText: { fontSize: 20, fontWeight: "700", color: COLORS.heading },
-//   subText: { fontSize: 13, color: COLORS.subtitle, marginTop: 4 },
-
-//   locationSection: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     paddingHorizontal: 16,
-//     marginVertical: 10,
-//   },
-//   locationText: { fontSize: 13, color: COLORS.subtitle, marginLeft: 6 },
-
-//   bannerSection: {
-//     marginVertical: 10,
-//     position: "relative",
-//   },
-//   bannerCard: {
-//     width: width - 32,
-//     height: 170,
-//     borderRadius: 12,
-//     overflow: "hidden",
-//     marginHorizontal: 16,
-//   },
-//   bannerImage: {
-//     width: "100%",
-//     height: "100%",
-//     borderRadius: 12,
-//     resizeMode: "cover",
-//   },
-//   paginationContainer: {
-//     flexDirection: "row",
-//     justifyContent: "center",
-//     alignItems: "center",
-//     marginTop: 8,
-//   },
-//   paginationDot: {
-//     width: 8,
-//     height: 8,
-//     borderRadius: 4,
-//     marginHorizontal: 4,
-//   },
-//   paginationDotActive: {
-//     backgroundColor: COLORS.primary,
-//     width: 20,
-//   },
-//   paginationDotInactive: {
-//     backgroundColor: "#ccc",
-//   },
-
-//   sectionTitle: {
-//     fontSize: 18,
-//     fontWeight: "700",
-//     color: COLORS.heading,
-//     marginTop: 16,
-//     marginBottom: 10,
-//     paddingHorizontal: 16,
-//   },
-
-//   iconGrid: {
-//     flexDirection: "row",
-//     flexWrap: "wrap",
-//     justifyContent: "space-between",
-//     paddingHorizontal: 16,
-//     gap: 10,
-//   },
-//   iconCard: {
-//     width: (width - 64) / 3, // 3 per row
-//     alignItems: "center",
-//     marginBottom: 16,
-//   },
-//   iconCircle: {
-//     width: 70,
-//     height: 70,
-//     borderRadius: 35,
-//     backgroundColor: "#f6f6f6",
-//     justifyContent: "center",
-//     alignItems: "center",
-//     shadowColor: COLORS.cardShadow,
-//     shadowOpacity: 0.3,
-//     shadowRadius: 4,
-//     shadowOffset: { width: 0, height: 2 },
-//   },
-//   iconImage: { width: 38, height: 38, resizeMode: "contain" },
-//   iconLabel: { fontSize: 13, fontWeight: "600", color: COLORS.subtitle, marginTop: 4 },
-
-//   descriptionCard: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     backgroundColor: "#D0E8FF",
-//     marginRight: 16,
-//     padding: 16,
-//     borderRadius: 16,
-//     shadowColor: COLORS.cardShadow,
-//     shadowOpacity: 0.15,
-//     shadowRadius: 6,
-//     shadowOffset: { width: 0, height: 3 },
-//     minWidth: width * 0.45,
-//     height: 120,
-//   },
-//   descIcon: { width: 45, height: 45, resizeMode: "contain", marginRight: 14 },
-//   descTextContainer: { flex: 1 },
-//   descTitle: { fontSize: 16, fontWeight: "700", color: COLORS.heading, marginBottom: 6 },
-//   descText: { fontSize: 13, color: COLORS.subtitle, lineHeight: 18 },
-
-//   iconGridSmall: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 16 },
-//   iconCardSmall: { width: width / 5, alignItems: "center" },
-//   iconCircleSmall: {
-//     width: 55,
-//     height: 55,
-//     borderRadius: 27.5,
-//     backgroundColor: "#fff",
-//     borderWidth: 1.2,
-//     borderColor: "#eee",
-//     justifyContent: "center",
-//     alignItems: "center",
-//   },
-//   iconImageSmall: { width: 35, height: 35, resizeMode: "contain" },
-//   iconLabelSmall: { fontSize: 12, color: COLORS.subtitle, marginTop: 4 },
-
-//   aboutCard: {
-//     backgroundColor: "#E8F5E8",
-//     marginHorizontal: 16,
-//     padding: 16,
-//     borderRadius: 12,
-//     borderWidth: 1,
-//     borderColor: COLORS.primary,
-//     marginBottom: 16,
-//   },
-//   aboutText: {
-//     fontSize: 14,
-//     color: COLORS.text,
-//     lineHeight: 20,
-//     marginBottom: 8,
-//   },
-
-//   helpCard: {
-//     backgroundColor: "#FFF9E6",
-//     marginHorizontal: 16,
-//     padding: 16,
-//     borderRadius: 12,
-//     borderWidth: 1,
-//     borderColor: COLORS.accent,
-//     marginBottom: 16,
-//   },
-//   helpItem: {
-//     flexDirection: "row",
-//     alignItems: "center",
-//     marginBottom: 12,
-//   },
-//   helpText: {
-//     fontSize: 14,
-//     color: COLORS.text,
-//     marginLeft: 8,
-//   },
-//   helpButton: {
-//     marginTop: 12,
-//     borderRadius: 12,
-//     overflow: "hidden",
-//   },
-//   helpGradient: {
-//     paddingVertical: 12,
-//     paddingHorizontal: 20,
-//     alignItems: "center",
-//   },
-//   helpButtonText: {
-//     color: "#fff",
-//     fontSize: 15,
-//     fontWeight: "600",
-//   },
-
-//   manageButton: { marginHorizontal: 16, marginVertical: 24, borderRadius: 12, overflow: "hidden" },
-//   manageGradient: { paddingVertical: 14, justifyContent: "center", alignItems: "center" },
-//   manageText: { color: "#fff", fontSize: 16, fontWeight: "700" },
-
-//   modalOverlay: {
-//     flex: 1,
-//     backgroundColor: "rgba(0,0,0,0.5)",
-//   },
-//   modalOverlayContent: {
-//     flex: 1,
-//     justifyContent: "center",
-//     alignItems: "center",
-//   },
-//   modalContent: {
-//     width: width * 0.8,
-//     backgroundColor: "#fff",
-//     borderRadius: 16,
-//     padding: 24,
-//     alignItems: "center",
-//     shadowColor: "#000",
-//     shadowOpacity: 0.3,
-//     shadowRadius: 10,
-//     shadowOffset: { width: 0, height: 5 },
-//     elevation: 10,
-//   },
-//   modalIconWrapper: {
-//     backgroundColor: "#FFF9C4",
-//     padding: 16,
-//     borderRadius: 50,
-//     marginBottom: 16,
-//     borderWidth: 2,
-//     borderColor: COLORS.accent,
-//   },
-//   modalIcon: {
-//     width: 48,
-//     height: 48,
-//     resizeMode: "contain",
-//   },
-//   modalTitle: {
-//     fontSize: 22,
-//     fontWeight: "700",
-//     color: COLORS.heading,
-//     marginBottom: 12,
-//     textAlign: "center",
-//   },
-//   modalDescription: {
-//     fontSize: 15,
-//     color: COLORS.text,
-//     textAlign: "center",
-//     marginBottom: 24,
-//     lineHeight: 22,
-//   },
-//   modalCloseButton: {
-//     paddingVertical: 12,
-//     paddingHorizontal: 40,
-//     borderRadius: 25,
-//     minWidth: 120,
-//   },
-//   modalCloseText: {
-//     color: "#000",
-//     fontWeight: "700",
-//     fontSize: 16,
-//     textAlign: "center",
-//   },
-// });
-
-
-//------------------------------------------------------------------------------------------------------------
-
-
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   SafeAreaView,
@@ -1617,13 +15,15 @@ import {
   Modal,
   Animated,
   Easing,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { MaterialCommunityIcons as Icon } from "@expo/vector-icons";
 import SideNav from "../../components/SideNav";
-import { useAppSelector } from "@/hooks/hooks";
+import { useAppSelector, useAppDispatch } from "@/hooks/hooks";
+import { selectHostel } from "@/app/reduxStore/reduxSlices/authSlice";
 
 const { width } = Dimensions.get("window");
 
@@ -1635,20 +35,62 @@ const COLORS = {
   cardShadow: "#00000010",
   heading: "#000000",
   subtitle: "#555555",
+  error: "#FF5252",
+  warning: "#FF9800",
+  success: "#4CAF50",
 };
+
+interface Hostel {
+  hostelId: string;
+  _id: string;
+  hostelName: string;
+  hostelType: string;
+  govtRegistrationId: string;
+  fullAddress: string;
+  status: "pending" | "approved" | "rejected";
+  isActive: boolean;
+  rejectionReason?: string;
+}
 
 export default function HostelHome() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
   const [locationName, setLocationName] = useState<string | null>(null);
   const [locationStatus, setLocationStatus] = useState("pending");
   const [drawerVisible, setDrawerVisible] = useState(false);
-
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedOffer, setSelectedOffer] = useState<any>(null);
+  const [showHostelDropdown, setShowHostelDropdown] = useState(false);
+
   const scaleAnim = useRef(new Animated.Value(0)).current;
 
-  const { loading, error, token, userId } = useAppSelector((state) => state.auth);
-  console.log("userId", userId);
+  const {
+    loading,
+    error,
+    token,
+    userId,
+    hostels,
+    selectedHostelId,
+    user
+  } = useAppSelector((state) => state.auth);
+
+  // Filter approved hostels only for operations
+  const approvedHostels = hostels.filter(h => h.status === "approved" && h.isActive);
+  
+  // Get selected hostel details (only if approved)
+  const selectedHostel = approvedHostels.find(h => h.hostelId === selectedHostelId) || 
+                        hostels.find(h => h.hostelId === selectedHostelId);
+
+  // Get hostel status count
+  const getHostelStatusCount = () => {
+    return {
+      approved: hostels.filter(h => h.status === "approved").length,
+      pending: hostels.filter(h => h.status === "pending").length,
+      rejected: hostels.filter(h => h.status === "rejected").length,
+    };
+  };
+
+  const statusCount = getHostelStatusCount();
 
   const banners = [
     require("../../assets/banners/banner1.jpg"),
@@ -1796,43 +238,148 @@ export default function HostelHome() {
     closeModal();
   };
 
-  const checkHostelData = async () => {
-    const data = {
-      images: ["img1", "img2"],
-      videos: ["video1"],
-      location: "Some Location",
-      pricing: { roomA: 5000, roomB: 6500, roomC: 8000 },
-      rooms: [{ type: "A", price: 5000 }, { type: "B", price: 6500 }],
-    };
-
-    if (
-      data.images &&
-      data.images.length > 0 &&
-      data.videos &&
-      data.videos.length > 0 &&
-      data.location &&
-      data.pricing &&
-      data.rooms &&
-      data.rooms.length > 0
-    ) {
-      return true;
+  const handleSelectHostel = (hostelId: string) => {
+    const hostel = hostels.find(h => h.hostelId === hostelId);
+    if (hostel) {
+      dispatch(selectHostel(hostelId));
+      setShowHostelDropdown(false);
+      
+      // Show status-specific alerts
+      if (hostel.status !== "approved") {
+        Alert.alert(
+          `Hostel ${hostel.status === "pending" ? "Under Review" : "Not Approved"}`,
+          hostel.status === "pending"
+            ? "This hostel is under review. You can view details but cannot perform operations until it's approved."
+            : `This hostel has been rejected. Reason: ${hostel.rejectionReason || "Not specified"}`,
+          [{ text: "OK", style: "cancel" }]
+        );
+      }
     }
-    return false;
+  };
+
+  const checkHostelData = async () => {
+    // This function would check if all required data is filled for the selected hostel
+    // You can implement API calls here to verify data completeness
+    return true; // Placeholder - implement your logic
   };
 
   const handleManageHostels = async () => {
+    if (!selectedHostelId) {
+      Alert.alert(
+        "No Hostel Selected",
+        "Please select a hostel first",
+        [{ text: "OK", style: "cancel" }]
+      );
+      return;
+    }
+
+    // Check if selected hostel exists
+    const selected = hostels.find(h => h.hostelId === selectedHostelId);
+    if (!selected) {
+      Alert.alert(
+        "Hostel Not Found",
+        "The selected hostel could not be found.",
+        [{ text: "OK", style: "cancel" }]
+      );
+      return;
+    }
+
+    // For non-approved hostels, only allow viewing
+    if (selected.status !== "approved") {
+      Alert.alert(
+        `Hostel ${selected.status.toUpperCase()}`,
+        selected.status === "pending"
+          ? "This hostel is under review. You can view details but cannot perform operations."
+          : "This hostel has been rejected and cannot be managed.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "View Details", 
+            onPress: () => {
+              router.push({
+                pathname: "/HostelDetails",
+                params: {
+                  hostelId: selectedHostelId,
+                  hostelName: selected?.hostelName,
+                  viewOnly: "true"
+                }
+              });
+            }
+          }
+        ]
+      );
+      return;
+    }
+
     const isDataReady = await checkHostelData();
     if (isDataReady) {
-      router.push("/HostelDetails");
+      router.push({
+        pathname: "/HostelDetails",
+        params: {
+          hostelId: selectedHostelId,
+          hostelName: selectedHostel?.hostelName
+        }
+      });
     } else {
-      alert(
-        "Please upload all images, videos, location, pricing, and room details before managing the hostel."
+      Alert.alert(
+        "Incomplete Data",
+        "Please complete all required sections (Upload, Price, Rooms, Facilities, Summary, Bank Details) before managing the hostel.",
+        [
+          { text: "OK", style: "cancel" },
+          { text: "Complete Now", onPress: () => router.push("/UploadMedia") }
+        ]
       );
     }
   };
 
-  const handleSubmitQuickActions = () => {
-    alert("Quick Actions submitted! (You can customize this action)");
+  const handleQuickActionPress = (route: string) => {
+    if (!selectedHostelId) {
+      Alert.alert(
+        "Select Hostel First",
+        "Please select a hostel to continue",
+        [{ text: "OK", style: "cancel" }]
+      );
+      return;
+    }
+
+    // Check if selected hostel exists
+    const selected = hostels.find(h => h.hostelId === selectedHostelId);
+    if (!selected) {
+      Alert.alert(
+        "Hostel Not Found",
+        "The selected hostel could not be found.",
+        [{ text: "OK", style: "cancel" }]
+      );
+      return;
+    }
+
+    // For non-approved hostels, only allow viewing
+    if (selected.status !== "approved") {
+      Alert.alert(
+        `Hostel ${selected.status.toUpperCase()}`,
+        selected.status === "pending"
+          ? "This hostel is under review. Operations are disabled until approval."
+          : "This hostel has been rejected and operations are not allowed.",
+        [{ text: "OK", style: "cancel" }]
+      );
+      return;
+    }
+
+    const params: any = {
+      hostelId: selectedHostelId,
+      hostelName: selectedHostel?.hostelName
+    };
+
+    // For specific screens, add additional params
+    if (route === '/Facilities') {
+      params.hostelId = selectedHostelId;
+      params.hostelName = selectedHostel?.hostelName;
+    }
+
+    router.push({
+      pathname: route,
+      params: params
+    });
   };
 
   const renderBannerItem = ({ item }: { item: any }) => (
@@ -1856,6 +403,43 @@ export default function HostelHome() {
     </View>
   );
 
+  // Hostel type icon mapping
+  const getHostelTypeIcon = (type: string) => {
+    switch (type?.toLowerCase()) {
+      case 'boys': return 'human-male';
+      case 'girls': return 'human-female';
+      case 'co-ed': return 'human-male-female';
+      default: return 'home';
+    }
+  };
+
+  const getHostelTypeColor = (type: string) => {
+    switch (type?.toLowerCase()) {
+      case 'boys': return '#4A90E2';
+      case 'girls': return '#E91E63';
+      case 'co-ed': return '#9C27B0';
+      default: return COLORS.primary;
+    }
+  };
+
+  const getHostelStatusColor = (status: string) => {
+    switch (status) {
+      case 'approved': return COLORS.success;
+      case 'pending': return COLORS.warning;
+      case 'rejected': return COLORS.error;
+      default: return COLORS.subtitle;
+    }
+  };
+
+  const getHostelStatusIcon = (status: string) => {
+    switch (status) {
+      case 'approved': return 'check-circle';
+      case 'pending': return 'clock-outline';
+      case 'rejected': return 'close-circle';
+      default: return 'help-circle';
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["right", "left", "bottom"]}>
       <StatusBar backgroundColor={COLORS.background} barStyle="dark-content" />
@@ -1878,7 +462,11 @@ export default function HostelHome() {
 
         {/* Welcome */}
         <View style={styles.welcomeContainer}>
-          <Text style={styles.welcomeText}>Welcome back, Owner 👋</Text>
+          <View style={styles.welcomeHeader}>
+            <Text style={styles.welcomeText}>
+              Welcome back, {user?.fullName || "Owner"} 👋
+            </Text>
+          </View>
           <Text style={styles.subText}>Connected Owner App</Text>
         </View>
 
@@ -1918,20 +506,315 @@ export default function HostelHome() {
           {renderPaginationDots()}
         </View>
 
-        {/* Quick Actions (3 per row) */}
+        {/* Hostel Dropdown Selector */}
+        <View style={styles.dropdownSection}>
+          <View style={styles.dropdownHeader}>
+            <Text style={styles.dropdownTitle}>Select Hostel to Manage</Text>
+            <View style={styles.hostelStatusCount}>
+              <View style={styles.statusBadge}>
+                <Icon name="check-circle" size={12} color={COLORS.success} />
+                <Text style={[styles.statusBadgeText, { color: COLORS.success }]}>
+                  {statusCount.approved}
+                </Text>
+              </View>
+              <View style={styles.statusBadge}>
+                <Icon name="clock-outline" size={12} color={COLORS.warning} />
+                <Text style={[styles.statusBadgeText, { color: COLORS.warning }]}>
+                  {statusCount.pending}
+                </Text>
+              </View>
+              <View style={styles.statusBadge}>
+                <Icon name="close-circle" size={12} color={COLORS.error} />
+                <Text style={[styles.statusBadgeText, { color: COLORS.error }]}>
+                  {statusCount.rejected}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.loadingText}>Loading hostels...</Text>
+            </View>
+          ) : hostels.length === 0 ? (
+            <View style={styles.noHostelsContainer}>
+              <Icon name="home-off" size={40} color="#ccc" />
+              <Text style={styles.noHostelsText}>
+                No hostels found. Please contact support if this is incorrect.
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.dropdownContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.dropdownButton,
+                  selectedHostel && selectedHostel.status !== "approved" && styles.dropdownButtonDisabled
+                ]}
+                onPress={() => setShowHostelDropdown(!showHostelDropdown)}
+                activeOpacity={0.7}
+                disabled={hostels.length === 0}
+              >
+                <View style={styles.dropdownButtonContent}>
+                  {selectedHostel && (
+                    <>
+                      <Icon
+                        name={getHostelTypeIcon(selectedHostel.hostelType)}
+                        size={22}
+                        color={
+                          selectedHostel.status === "approved" 
+                            ? getHostelTypeColor(selectedHostel.hostelType)
+                            : COLORS.subtitle
+                        }
+                        style={styles.homeIcon}
+                      />
+                      <View style={styles.hostelInfo}>
+                        <View style={styles.hostelNameRow}>
+                          <Text 
+                            style={[
+                              styles.dropdownButtonText,
+                              selectedHostel.status !== "approved" && styles.dropdownButtonTextDisabled
+                            ]} 
+                            numberOfLines={1}
+                          >
+                            {selectedHostel.hostelName}
+                          </Text>
+                          <View style={[
+                            styles.hostelStatusBadge,
+                            { backgroundColor: getHostelStatusColor(selectedHostel.status) + '20' }
+                          ]}>
+                            <Icon 
+                              name={getHostelStatusIcon(selectedHostel.status)} 
+                              size={12} 
+                              color={getHostelStatusColor(selectedHostel.status)} 
+                            />
+                            <Text style={[
+                              styles.hostelStatusText,
+                              { color: getHostelStatusColor(selectedHostel.status) }
+                            ]}>
+                              {selectedHostel.status.toUpperCase()}
+                            </Text>
+                          </View>
+                        </View>
+                        {selectedHostel && (
+                          <Text style={[
+                            styles.hostelTypeText,
+                            selectedHostel.status !== "approved" && { color: COLORS.subtitle }
+                          ]}>
+                            {selectedHostel.hostelType} • 
+                            {selectedHostel.status === "approved" 
+                              ? " Active" 
+                              : selectedHostel.status === "pending"
+                                ? " Under Review"
+                                : " Not Available"
+                            }
+                          </Text>
+                        )}
+                      </View>
+                    </>
+                  )}
+                  {!selectedHostel && (
+                    <>
+                      <Icon name="home" size={22} color={COLORS.primary} style={styles.homeIcon} />
+                      <View style={styles.hostelInfo}>
+                        <Text style={styles.dropdownButtonText} numberOfLines={1}>
+                          Select a hostel
+                        </Text>
+                        <Text style={styles.hostelTypeText}>
+                          Choose from {approvedHostels.length} approved hostels
+                        </Text>
+                      </View>
+                    </>
+                  )}
+                </View>
+                <Icon
+                  name={showHostelDropdown ? "chevron-up" : "chevron-down"}
+                  size={20}
+                  color={selectedHostel?.status === "approved" ? COLORS.primary : COLORS.subtitle}
+                />
+              </TouchableOpacity>
+
+              {showHostelDropdown && (
+                <View style={styles.dropdownMenu}>
+                  <ScrollView
+                    style={styles.dropdownScrollView}
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {/* Approved Hostels Section */}
+                    {approvedHostels.length > 0 && (
+                      <>
+                        <View style={styles.dropdownSectionHeader}>
+                          <Text style={styles.dropdownSectionTitle}>Approved Hostels</Text>
+                          <Text style={styles.dropdownSectionCount}>{approvedHostels.length}</Text>
+                        </View>
+                        {approvedHostels.map((hostel) => (
+                          <TouchableOpacity
+                            key={hostel.hostelId}
+                            style={[
+                              styles.dropdownItem,
+                              selectedHostelId === hostel.hostelId && styles.dropdownItemSelected,
+                              hostel.status === "approved" && styles.dropdownItemApproved
+                            ]}
+                            onPress={() => handleSelectHostel(hostel.hostelId)}
+                          >
+                            <Icon
+                              name={getHostelTypeIcon(hostel.hostelType)}
+                              size={18}
+                              color={
+                                selectedHostelId === hostel.hostelId 
+                                  ? "#fff" 
+                                  : getHostelTypeColor(hostel.hostelType)
+                              }
+                              style={styles.itemIcon}
+                            />
+                            <View style={styles.hostelItemInfo}>
+                              <Text
+                                style={[
+                                  styles.dropdownItemText,
+                                  selectedHostelId === hostel.hostelId && styles.dropdownItemTextSelected
+                                ]}
+                                numberOfLines={1}
+                              >
+                                {hostel.hostelName}
+                              </Text>
+                              <View style={styles.hostelItemDetails}>
+                                <Text
+                                  style={[
+                                    styles.hostelItemType,
+                                    selectedHostelId === hostel.hostelId && styles.hostelItemTypeSelected
+                                  ]}
+                                >
+                                  {hostel.hostelType} • {hostel.status}
+                                </Text>
+                              </View>
+                            </View>
+                            {selectedHostelId === hostel.hostelId ? (
+                              <Icon name="check" size={18} color="#fff" />
+                            ) : (
+                              <Icon name="check-circle" size={16} color={COLORS.success} />
+                            )}
+                          </TouchableOpacity>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Other Status Hostels Section */}
+                    {hostels.filter(h => h.status !== "approved").length > 0 && (
+                      <>
+                        <View style={styles.dropdownSectionDivider} />
+                        <View style={styles.dropdownSectionHeader}>
+                          <Text style={styles.dropdownSectionTitle}>Other Hostels</Text>
+                        </View>
+                        {hostels
+                          .filter(h => h.status !== "approved")
+                          .map((hostel) => (
+                            <TouchableOpacity
+                              key={hostel.hostelId}
+                              style={[
+                                styles.dropdownItem,
+                                styles.dropdownItemDisabled,
+                                hostel.status === "pending" && styles.dropdownItemPending,
+                                hostel.status === "rejected" && styles.dropdownItemRejected
+                              ]}
+                              onPress={() => {
+                                handleSelectHostel(hostel.hostelId);
+                              }}
+                            >
+                              <Icon
+                                name={getHostelTypeIcon(hostel.hostelType)}
+                                size={18}
+                                color="#ccc"
+                                style={styles.itemIcon}
+                              />
+                              <View style={styles.hostelItemInfo}>
+                                <Text
+                                  style={styles.dropdownItemTextDisabled}
+                                  numberOfLines={1}
+                                >
+                                  {hostel.hostelName}
+                                </Text>
+                                <View style={styles.hostelItemDetails}>
+                                  <Text
+                                    style={[
+                                      styles.hostelItemType,
+                                      { color: getHostelStatusColor(hostel.status) }
+                                    ]}
+                                  >
+                                    {hostel.hostelType} • {hostel.status}
+                                  </Text>
+                                  {hostel.rejectionReason && hostel.status === "rejected" && (
+                                    <Text style={styles.rejectionReason} numberOfLines={1}>
+                                      {hostel.rejectionReason}
+                                    </Text>
+                                  )}
+                                </View>
+                              </View>
+                              <Icon
+                                name={getHostelStatusIcon(hostel.status)}
+                                size={16}
+                                color={getHostelStatusColor(hostel.status)}
+                              />
+                            </TouchableOpacity>
+                          ))}
+                      </>
+                    )}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* Quick Actions (3 per row) - Show only if approved hostel selected */}
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.iconGrid}>
           {quickActions.map((item, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.iconCard}
-              activeOpacity={0.8}
-              onPress={() => router.push(item.route as any)}
+              style={[
+                styles.iconCard,
+                (!selectedHostelId || selectedHostel?.status !== "approved") && styles.iconCardDisabled
+              ]}
+              activeOpacity={(!selectedHostelId || selectedHostel?.status !== "approved") ? 1 : 0.8}
+              onPress={() => {
+                if (!selectedHostelId) {
+                  Alert.alert(
+                    "Select Hostel",
+                    "Please select a hostel to perform this action.",
+                    [{ text: "OK", style: "cancel" }]
+                  );
+                } else if (selectedHostel?.status !== "approved") {
+                  Alert.alert(
+                    `Hostel ${selectedHostel?.status?.toUpperCase() || "Not Approved"}`,
+                    selectedHostel?.status === "pending"
+                      ? "This hostel is under review. Operations are disabled until approval."
+                      : "This hostel has been rejected and operations are not allowed.",
+                    [{ text: "OK", style: "cancel" }]
+                  );
+                } else {
+                  handleQuickActionPress(item.route);
+                }
+              }}
             >
-              <View style={styles.iconCircle}>
-                <Image source={item.icon} style={styles.iconImage} />
+              <View style={[
+                styles.iconCircle,
+                (!selectedHostelId || selectedHostel?.status !== "approved") && styles.iconCircleDisabled
+              ]}>
+                <Image 
+                  source={item.icon} 
+                  style={[
+                    styles.iconImage,
+                    (!selectedHostelId || selectedHostel?.status !== "approved") && { tintColor: "#ccc" }
+                  ]} 
+                />
               </View>
-              <Text style={styles.iconLabel}>{item.label}</Text>
+              <Text style={[
+                styles.iconLabel,
+                (!selectedHostelId || selectedHostel?.status !== "approved") && styles.iconLabelDisabled
+              ]}>
+                {item.label}
+              </Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -1944,26 +827,45 @@ export default function HostelHome() {
           showsHorizontalScrollIndicator={false}
           style={{ marginVertical: 16, paddingLeft: 16 }}
           renderItem={({ item, index }) => (
-            <View style={styles.descriptionCard}>
+            <View style={[
+              styles.descriptionCard,
+              (!selectedHostelId || selectedHostel?.status !== "approved") && styles.descriptionCardDisabled
+            ]}>
               <Image
                 source={
                   index === 0
                     ? require("../../assets/icons/upload_alt.png")
                     : index === 1
-                    ? require("../../assets/icons/price_alt.png")
-                    : index === 2
-                    ? require("../../assets/icons/rooms_alt.png")
-                    : index === 3
-                    ? require("../../assets/icons/facilities_alt.png")
-                    : index === 4
-                    ? require("../../assets/icons/summary_alt.png")
-                    : require("../../assets/icons/bank_alt.png")
+                      ? require("../../assets/icons/price_alt.png")
+                      : index === 2
+                        ? require("../../assets/icons/rooms_alt.png")
+                        : index === 3
+                          ? require("../../assets/icons/facilities_alt.png")
+                          : index === 4
+                            ? require("../../assets/icons/summary_alt.png")
+                            : require("../../assets/icons/bank_alt.png")
                 }
-                style={styles.descIcon}
+                style={[
+                  styles.descIcon,
+                  (!selectedHostelId || selectedHostel?.status !== "approved") && { tintColor: "#ccc" }
+                ]}
               />
               <View style={styles.descTextContainer}>
-                <Text style={styles.descTitle}>{item.label}</Text>
-                <Text style={styles.descText}>{item.description}</Text>
+                <Text style={[
+                  styles.descTitle,
+                  (!selectedHostelId || selectedHostel?.status !== "approved") && styles.descTitleDisabled
+                ]}>
+                  {item.label}
+                </Text>
+                <Text style={[
+                  styles.descText,
+                  (!selectedHostelId || selectedHostel?.status !== "approved") && styles.descTextDisabled
+                ]}>
+                  {(!selectedHostelId || selectedHostel?.status !== "approved")
+                    ? "Select an approved hostel to enable this feature"
+                    : item.description
+                  }
+                </Text>
               </View>
             </View>
           )}
@@ -1991,7 +893,7 @@ export default function HostelHome() {
         <Text style={styles.sectionTitle}>About the App</Text>
         <View style={styles.aboutCard}>
           <Text style={styles.aboutText}>
-Manage your hostel operations effortlessly with Fyndom Partner App. Instantly edit hostel details, pricing, room availability, and amenities — all in one simple platform.
+            Manage your hostel operations effortlessly with Fyndom Partner App. Instantly edit hostel details, pricing, room availability, and amenities — all in one simple platform.
           </Text>
           <Text style={styles.aboutText}>
             Designed for hostel owners to maximize bookings and manage rewards, offers, and payouts with ease.
@@ -2024,16 +926,36 @@ Manage your hostel operations effortlessly with Fyndom Partner App. Instantly ed
         </View>
 
         {/* Manage Hostels Button */}
-        <TouchableOpacity style={styles.manageButton} onPress={handleManageHostels}>
-          <LinearGradient colors={[COLORS.primary, "#02b828"]} style={styles.manageGradient}>
-            <Text style={styles.manageText}>Manage Hostels</Text>
+        <TouchableOpacity 
+          style={[
+            styles.manageButton,
+            (!selectedHostelId) && styles.manageButtonDisabled
+          ]} 
+          onPress={handleManageHostels}
+          activeOpacity={(!selectedHostelId) ? 0.5 : 0.8}
+        >
+          <LinearGradient 
+            colors={(!selectedHostelId) 
+              ? ["#ccc", "#999"] 
+              : [COLORS.primary, "#02b828"]
+            } 
+            style={styles.manageGradient}
+          >
+            <Text style={styles.manageText}>
+              {(!selectedHostelId)
+                ? "Select a Hostel to View Details"
+                : selectedHostel?.status === "approved"
+                  ? "Manage Selected Hostel"
+                  : `View ${selectedHostel?.status === "pending" ? "Pending" : "Rejected"} Hostel Details`
+              }
+            </Text>
           </LinearGradient>
         </TouchableOpacity>
       </ScrollView>
 
       {/* Side navigation drawer */}
-      <SideNav 
-        visible={drawerVisible} 
+      <SideNav
+        visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
         currentRoute="/tabs/HostelOwnerHome"
         onNavigate={(route) => {
@@ -2086,7 +1008,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
-    paddingTop: Platform.OS === "android" ? 24 : 12, // Adjusted slightly up from 40/20
+    paddingTop: Platform.OS === "android" ? 24 : 12,
   },
   header: {
     flexDirection: "row",
@@ -2101,20 +1023,43 @@ const styles = StyleSheet.create({
   logo: { width: 120, height: 50, resizeMode: "contain" },
   headerIcons: { flexDirection: "row", alignItems: "center", gap: 12 },
 
-  welcomeContainer: { paddingHorizontal: 16, marginTop: 12 },
-  welcomeText: { fontSize: 20, fontWeight: "700", color: COLORS.heading },
-  subText: { fontSize: 13, color: COLORS.subtitle, marginTop: 4 },
+  welcomeContainer: {
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  welcomeHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  welcomeText: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: COLORS.heading,
+    flex: 1,
+  },
+  subText: {
+    fontSize: 13,
+    color: COLORS.subtitle,
+    marginBottom: 8,
+  },
 
   locationSection: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 16,
-    marginVertical: 10,
+    marginTop: 10,
+    marginBottom: 4,
   },
-  locationText: { fontSize: 13, color: COLORS.subtitle, marginLeft: 6 },
+  locationText: {
+    fontSize: 13,
+    color: COLORS.subtitle,
+    marginLeft: 6
+  },
 
   bannerSection: {
-    marginVertical: 10,
+    marginVertical: 8,
     position: "relative",
   },
   bannerCard: {
@@ -2150,6 +1095,241 @@ const styles = StyleSheet.create({
     backgroundColor: "#ccc",
   },
 
+  // Dropdown Section Styles
+  dropdownSection: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  dropdownHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  dropdownTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.heading,
+  },
+  hostelStatusCount: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  statusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  loadingText: {
+    fontSize: 14,
+    color: COLORS.subtitle,
+    marginLeft: 10,
+  },
+  noHostelsContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 30,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#eee",
+  },
+  noHostelsText: {
+    fontSize: 14,
+    color: COLORS.subtitle,
+    textAlign: "center",
+    marginTop: 10,
+    lineHeight: 20,
+  },
+  dropdownContainer: {
+    position: "relative",
+  },
+  dropdownButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  dropdownButtonDisabled: {
+    backgroundColor: "#f5f5f5",
+    borderColor: "#e0e0e0",
+  },
+  dropdownButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  homeIcon: {
+    marginRight: 10,
+  },
+  hostelInfo: {
+    flex: 1,
+  },
+  hostelNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  dropdownButtonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: COLORS.heading,
+    flex: 1,
+  },
+  dropdownButtonTextDisabled: {
+    color: COLORS.subtitle,
+  },
+  hostelStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  hostelStatusText: {
+    fontSize: 10,
+    fontWeight: "700",
+    marginLeft: 4,
+  },
+  hostelTypeText: {
+    fontSize: 12,
+    color: COLORS.subtitle,
+    marginTop: 2,
+  },
+  dropdownMenu: {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    right: 0,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    marginTop: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    maxHeight: 350,
+    zIndex: 1000,
+  },
+  dropdownScrollView: {
+    maxHeight: 300,
+  },
+  dropdownSectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#f8f9fa",
+  },
+  dropdownSectionTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: COLORS.subtitle,
+    letterSpacing: 0.5,
+  },
+  dropdownSectionCount: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: COLORS.primary,
+  },
+  dropdownSectionDivider: {
+    height: 1,
+    backgroundColor: "#eee",
+    marginHorizontal: 16,
+  },
+  dropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  dropdownItemSelected: {
+    backgroundColor: COLORS.primary,
+  },
+  dropdownItemApproved: {
+    backgroundColor: "#f8fff8",
+  },
+  dropdownItemPending: {
+    backgroundColor: "#fffbf0",
+  },
+  dropdownItemRejected: {
+    backgroundColor: "#fff5f5",
+  },
+  dropdownItemDisabled: {
+    opacity: 0.7,
+  },
+  itemIcon: {
+    marginRight: 10,
+  },
+  hostelItemInfo: {
+    flex: 1,
+  },
+  hostelItemDetails: {
+    marginTop: 2,
+  },
+  dropdownItemText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: COLORS.heading,
+  },
+  dropdownItemTextSelected: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+  dropdownItemTextDisabled: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#999",
+  },
+  hostelItemType: {
+    fontSize: 11,
+    color: COLORS.subtitle,
+  },
+  hostelItemTypeSelected: {
+    color: "#fff",
+    opacity: 0.9,
+  },
+  rejectionReason: {
+    fontSize: 10,
+    color: COLORS.error,
+    fontStyle: "italic",
+    marginTop: 2,
+  },
+
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
@@ -2171,6 +1351,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
+  iconCardDisabled: {
+    opacity: 0.5,
+  },
   iconCircle: {
     width: 70,
     height: 70,
@@ -2183,8 +1366,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
+  iconCircleDisabled: {
+    backgroundColor: "#f0f0f0",
+    shadowOpacity: 0.1,
+  },
   iconImage: { width: 38, height: 38, resizeMode: "contain" },
   iconLabel: { fontSize: 13, fontWeight: "600", color: COLORS.subtitle, marginTop: 4 },
+  iconLabelDisabled: { color: "#999" },
 
   descriptionCard: {
     flexDirection: "row",
@@ -2200,33 +1388,27 @@ const styles = StyleSheet.create({
     minWidth: width * 0.45,
     height: 120,
   },
+  descriptionCardDisabled: {
+    backgroundColor: "#f0f0f0",
+  },
   descIcon: { width: 45, height: 45, resizeMode: "contain", marginRight: 14 },
   descTextContainer: { flex: 1 },
   descTitle: { fontSize: 16, fontWeight: "700", color: COLORS.heading, marginBottom: 6 },
+  descTitleDisabled: { color: "#999" },
   descText: { fontSize: 13, color: COLORS.subtitle, lineHeight: 18 },
+  descTextDisabled: { color: "#999" },
 
-  // Submit button styles
-  submitButton: {
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 12,
-    overflow: "hidden",
-    alignSelf: "center",
-    width: width * 0.5,
+  iconGridSmall: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    marginBottom: 8,
   },
-  submitGradient: {
-    paddingVertical: 14,
-    justifyContent: "center",
+  iconCardSmall: {
+    width: width / 5,
     alignItems: "center",
+    marginBottom: 8,
   },
-  submitText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-
-  iconGridSmall: { flexDirection: "row", justifyContent: "space-between", paddingHorizontal: 16 },
-  iconCardSmall: { width: width / 5, alignItems: "center" },
   iconCircleSmall: {
     width: 55,
     height: 55,
@@ -2238,7 +1420,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   iconImageSmall: { width: 35, height: 35, resizeMode: "contain" },
-  iconLabelSmall: { fontSize: 12, color: COLORS.subtitle, marginTop: 4 },
+  iconLabelSmall: {
+    fontSize: 12,
+    color: COLORS.subtitle,
+    marginTop: 4,
+    textAlign: "center",
+  },
 
   aboutCard: {
     backgroundColor: "#E8F5E8",
@@ -2291,9 +1478,25 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 
-  manageButton: { marginHorizontal: 16, marginVertical: 24, borderRadius: 12, overflow: "hidden" },
-  manageGradient: { paddingVertical: 14, justifyContent: "center", alignItems: "center" },
-  manageText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  manageButton: {
+    marginHorizontal: 16,
+    marginVertical: 24,
+    borderRadius: 12,
+    overflow: "hidden"
+  },
+  manageButtonDisabled: {
+    opacity: 0.7,
+  },
+  manageGradient: {
+    paddingVertical: 14,
+    justifyContent: "center",
+    alignItems: "center"
+  },
+  manageText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700"
+  },
 
   modalOverlay: {
     flex: 1,
