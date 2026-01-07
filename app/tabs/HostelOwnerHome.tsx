@@ -116,6 +116,30 @@ export default function HostelHome() {
     return () => clearInterval(interval);
   }, [currentBannerIndex]);
 
+  // Load hostels on component mount
+  useEffect(() => {
+    loadHostels();
+  }, []);
+
+  const loadHostels = async () => {
+    setLoadingHostels(true);
+    try {
+      const savedHostels = await AsyncStorage.getItem(`hostels_${userId}`);
+      if (savedHostels) {
+        const parsedHostels = JSON.parse(savedHostels);
+        setHostels(parsedHostels);
+        // Set the first hostel as selected by default
+        if (parsedHostels.length > 0) {
+          setSelectedHostelId(parsedHostels[0].id);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading hostels:", error);
+    } finally {
+      setLoadingHostels(false);
+    }
+  };
+
   const loadLocation = useCallback(async () => {
     setLocationStatus("pending");
     try {
@@ -328,6 +352,13 @@ export default function HostelHome() {
           { text: "OK", style: "cancel" },
           { text: "Complete Now", onPress: () => router.push("/UploadMedia") }
         ]
+      Alert.alert(
+        "Incomplete Data",
+        "Please complete all required sections (Upload, Price, Rooms, Facilities, Summary, Bank Details) before managing the hostel.",
+        [
+          { text: "OK", style: "cancel" },
+          { text: "Complete Now", onPress: () => router.push("/UploadMedia") }
+        ]
       );
     }
   };
@@ -460,7 +491,7 @@ export default function HostelHome() {
           </View>
         </View>
 
-        {/* Welcome */}
+        {/* Welcome & Hostel Selector */}
         <View style={styles.welcomeContainer}>
           <View style={styles.welcomeHeader}>
             <Text style={styles.welcomeText}>
@@ -468,6 +499,76 @@ export default function HostelHome() {
             </Text>
           </View>
           <Text style={styles.subText}>Connected Owner App</Text>
+          
+          {/* Compact Hostel Selector */}
+          {loadingHostels ? (
+            <ActivityIndicator size="small" color={COLORS.primary} style={styles.loadingIndicator} />
+          ) : hostels.length > 0 ? (
+            <View style={styles.hostelSelectorContainer}>
+              <TouchableOpacity 
+                style={styles.hostelSelector}
+                onPress={() => setShowHostelDropdown(!showHostelDropdown)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.hostelSelectorContent}>
+                  <Icon name="home" size={18} color={COLORS.primary} />
+                  <Text style={styles.selectedHostelName} numberOfLines={1}>
+                    {selectedHostel?.name || "Select Hostel"}
+                  </Text>
+                  <Icon 
+                    name={showHostelDropdown ? "chevron-up" : "chevron-down"} 
+                    size={18} 
+                    color={COLORS.primary} 
+                  />
+                </View>
+              </TouchableOpacity>
+              
+              {/* Dropdown */}
+              {showHostelDropdown && (
+                <View style={styles.hostelDropdown}>
+                  {hostels.map((hostel) => (
+                    <TouchableOpacity
+                      key={hostel.id}
+                      style={[
+                        styles.hostelDropdownItem,
+                        selectedHostelId === hostel.id && styles.hostelDropdownItemSelected
+                      ]}
+                      onPress={() => handleSelectHostel(hostel.id)}
+                    >
+                      <Icon 
+                        name="home" 
+                        size={16} 
+                        color={selectedHostelId === hostel.id ? "#fff" : COLORS.primary} 
+                      />
+                      <Text 
+                        style={[
+                          styles.hostelDropdownText,
+                          selectedHostelId === hostel.id && styles.hostelDropdownTextSelected
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {hostel.name}
+                      </Text>
+                      {selectedHostelId === hostel.id && (
+                        <Icon name="check" size={16} color="#fff" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : (
+            <TouchableOpacity 
+              style={styles.noHostelCardCompact}
+              onPress={handleAddHostel}
+            >
+              <View style={styles.noHostelContent}>
+                <Icon name="home-plus" size={20} color={COLORS.primary} />
+                <Text style={styles.noHostelTextCompact}>Add your first hostel</Text>
+              </View>
+              <Icon name="chevron-right" size={18} color={COLORS.primary} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Location */}
@@ -894,6 +995,7 @@ export default function HostelHome() {
         <View style={styles.aboutCard}>
           <Text style={styles.aboutText}>
             Manage your hostel operations effortlessly with Fyndom Partner App. Instantly edit hostel details, pricing, room availability, and amenities — all in one simple platform.
+            Manage your hostel operations effortlessly with Fyndom Partner App. Instantly edit hostel details, pricing, room availability, and amenities — all in one simple platform.
           </Text>
           <Text style={styles.aboutText}>
             Designed for hostel owners to maximize bookings and manage rewards, offers, and payouts with ease.
@@ -1000,6 +1102,53 @@ export default function HostelHome() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Add Hostel Modal */}
+      <Modal
+        visible={addHostelModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAddHostelModalVisible(false)}
+      >
+        <View style={styles.addHostelModalOverlay}>
+          <View style={styles.addHostelModalContent}>
+            <Text style={styles.addHostelModalTitle}>Add New Hostel</Text>
+            <Text style={styles.addHostelModalSubtitle}>
+              Enter a name for your hostel. You can add multiple hostels and switch between them.
+            </Text>
+            
+            <TextInput
+              style={styles.hostelNameInput}
+              placeholder="Enter hostel name (e.g., Green Valley Hostel)"
+              placeholderTextColor="#999"
+              value={newHostelName}
+              onChangeText={setNewHostelName}
+              autoFocus
+            />
+            
+            <View style={styles.addHostelModalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => {
+                  setAddHostelModalVisible(false);
+                  setNewHostelName("");
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.modalButton, styles.saveButton]}
+                onPress={handleSaveHostelName}
+              >
+                <LinearGradient colors={[COLORS.primary, "#02b828"]} style={styles.saveButtonGradient}>
+                  <Text style={styles.saveButtonText}>Add Hostel</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1008,6 +1157,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
+    paddingTop: Platform.OS === "android" ? 24 : 12,
     paddingTop: Platform.OS === "android" ? 24 : 12,
   },
   header: {
@@ -1051,6 +1201,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginTop: 10,
     marginBottom: 4,
+    marginTop: 10,
+    marginBottom: 4,
   },
   locationText: {
     fontSize: 13,
@@ -1059,6 +1211,7 @@ const styles = StyleSheet.create({
   },
 
   bannerSection: {
+    marginVertical: 8,
     marginVertical: 8,
     position: "relative",
   },
@@ -1408,6 +1561,7 @@ const styles = StyleSheet.create({
     width: width / 5,
     alignItems: "center",
     marginBottom: 8,
+    marginBottom: 8,
   },
   iconCircleSmall: {
     width: 55,
@@ -1557,5 +1711,85 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 16,
     textAlign: "center",
+  },
+
+  // Add Hostel Modal Styles
+  addHostelModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  addHostelModalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    width: "90%",
+    maxWidth: 400,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 10,
+  },
+  addHostelModalTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: COLORS.heading,
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  addHostelModalSubtitle: {
+    fontSize: 14,
+    color: COLORS.subtitle,
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  hostelNameInput: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    marginBottom: 24,
+    backgroundColor: "#f9f9f9",
+  },
+  addHostelModalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 10,
+    overflow: "hidden",
+  },
+  cancelButton: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    backgroundColor: "#fff",
+  },
+  cancelButtonText: {
+    textAlign: "center",
+    paddingVertical: 14,
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.text,
+  },
+  saveButton: {
+    backgroundColor: COLORS.primary,
+  },
+  saveButtonGradient: {
+    paddingVertical: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  saveButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
   },
 });
