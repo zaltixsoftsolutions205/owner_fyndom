@@ -55,7 +55,7 @@ export const addRoom = createAsyncThunk(
       if (!roomData.hostelId) {
         throw new Error("Hostel ID is required");
       }
-      
+
       const response = await roomApi.addRoom(roomData);
       return response;
     } catch (error: any) {
@@ -66,6 +66,8 @@ export const addRoom = createAsyncThunk(
   }
 );
 
+// app/reduxStore/reduxSlices/roomSlice.tsx
+// Update getAllRooms thunk to always require hostelId
 export const getAllRooms = createAsyncThunk(
   "rooms/getAllRooms",
   async (hostelId: string, { rejectWithValue }) => {
@@ -73,10 +75,13 @@ export const getAllRooms = createAsyncThunk(
       if (!hostelId) {
         throw new Error("Hostel ID is required");
       }
-      
+
+      console.log(`🔄 Fetching rooms for hostel: ${hostelId}`);
       const response = await roomApi.getRooms(hostelId);
+      console.log(`✅ Rooms fetched successfully: ${response.data.rooms?.length || 0} rooms`);
       return response;
     } catch (error: any) {
+      console.error(`❌ Failed to fetch rooms for hostel ${hostelId}:`, error);
       return rejectWithValue(
         error.response?.data?.message || error.message || "Failed to fetch rooms"
       );
@@ -91,7 +96,7 @@ export const deleteRoom = createAsyncThunk(
       if (!roomId) {
         throw new Error("Room ID is required");
       }
-      
+
       const response = await roomApi.deleteRoom(roomId);
       return { response, roomId };
     } catch (error: any) {
@@ -181,7 +186,7 @@ const roomSlice = createSlice({
         state.error = action.payload as string;
         state.success = false;
       })
-      
+
       // Get all rooms cases
       .addCase(getAllRooms.pending, (state) => {
         state.allRoomsLoading = true;
@@ -197,7 +202,7 @@ const roomSlice = createSlice({
         state.allRoomsLoading = false;
         state.allRoomsError = action.payload as string;
       })
-      
+
       // Delete room cases
       .addCase(deleteRoom.pending, (state) => {
         state.deleteLoading = true;
@@ -216,7 +221,7 @@ const roomSlice = createSlice({
         state.deleteLoading = false;
         state.deleteError = action.payload as string;
       })
-      
+
       // Fetch Hostel Photos
       .addCase(getHostelPhotos.pending, (state) => {
         state.photosLoading = true;
@@ -230,7 +235,7 @@ const roomSlice = createSlice({
         state.photosLoading = false;
         state.photosError = action.payload as string;
       })
-      
+
       // Get Hostel Facilities
       .addCase(getFacilities.pending, (state) => {
         state.facilitiesLoading = true;

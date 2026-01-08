@@ -1,7 +1,8 @@
+// app/HostelDetails.tsx
 import { MaterialCommunityIcons as Icon, Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { recordRoute } from "../utils/navigationHistory";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   SafeAreaView,
   ScrollView,
@@ -35,6 +36,7 @@ const TEXT_DARK = "#212529";
 const ERROR_COLOR = "#FF5252";
 const WARNING_COLOR = "#FF9800";
 const SUCCESS_COLOR = "#4CAF50";
+const BANK_BLUE = "#1A237E";
 
 // Location Interface
 interface LocationData {
@@ -124,20 +126,25 @@ interface PricingResponse {
   };
 }
 
-// Bank Details Interface
+// Bank Details Interface - UPDATED based on your API response
 interface BankDetails {
-  bankName: string;
+  accountHolderName: string;
   accountNumber: string;
   ifscCode: string;
-  accountHolderName: string;
-  branchName?: string;
-  accountType?: string;
-  isVerified?: boolean;
+  bankName: string;
+  branchName: string;
+  upiId?: string;
+  isVerified: boolean;
+  setAt?: string;
 }
 
 interface BankDetailsResponse {
   success: boolean;
-  data: BankDetails;
+  data: {
+    hostelId: string;
+    hostelName: string;
+    bankDetails: BankDetails;
+  };
   message?: string;
 }
 
@@ -182,7 +189,7 @@ interface Hostel {
   rejectionReason?: string;
 }
 
-// Facilities Interface - UPDATED to match API response structure
+// Facilities Interface
 interface FacilityData {
   hostelId: string;
   hostelName: string;
@@ -198,6 +205,16 @@ interface FacilityData {
 interface FacilitiesResponse {
   success: boolean;
   data: FacilityData;
+}
+
+// Add this interface for hostel photos
+interface HostelPhoto {
+  _id: string;
+  filename: string;
+  originalName: string;
+  url: string;
+  isPrimary: boolean;
+  uploadDate: string;
 }
 
 const initialHostel = {
@@ -220,17 +237,51 @@ const initialHostel = {
   bookings: [],
 };
 
+// Helper function to mask account number
+const maskAccountNumber = (accountNumber: string): string => {
+  if (!accountNumber || accountNumber.length <= 4) return accountNumber || "XXXX";
+  const lastFour = accountNumber.slice(-4);
+  return `**** **** **** ${lastFour}`;
+};
+
+// Helper function to format IFSC code
+const formatIfscCode = (ifscCode: string): string => {
+  if (!ifscCode) return "";
+  return ifscCode.toUpperCase();
+};
+
+// Helper function to format date
+const formatDate = (dateString: string): string => {
+  if (!dateString) return "";
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+  } catch (error) {
+    return "";
+  }
+};
+
 export default function HostelDetails() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const dispatch = useAppDispatch();
   const [hostel] = useState(initialHostel);
+  
+  // Refs to track initial load
+  const initialLoadRef = useRef(false);
+  const previousHostelIdRef = useRef<string | null>(null);
+  
   const [pricingData, setPricingData] = useState<PricingData[]>([]);
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingError, setPricingError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [bankDetails, setBankDetails] = useState<BankDetails | null>(null);
   const [bankDetailsLoading, setBankDetailsLoading] = useState(false);
+  const [bankDetailsError, setBankDetailsError] = useState<string | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [profileImageUrl, setProfileImageUrl] = useState<string | null>(null);
   const [profileImageLoading, setProfileImageLoading] = useState(false);
@@ -238,14 +289,13 @@ export default function HostelDetails() {
   const [showHostelDropdown, setShowHostelDropdown] = useState(false);
   const [facilitiesData, setFacilitiesData] = useState<FacilityData | null>(null);
   const [facilitiesLoading, setFacilitiesLoading] = useState(false);
-  const [hostelPhotos, setHostelPhotos] = useState<any[]>([]);
+  const [hostelPhotos, setHostelPhotos] = useState<HostelPhoto[]>([]);
   const [photosLoading, setPhotosLoading] = useState(false);
 
   // Location state
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [locationModalVisible, setLocationModalVisible] = useState(false);
 
   // Room summary state
   const [roomSummary, setRoomSummary] = useState<RoomSummary | null>(null);
@@ -258,6 +308,15 @@ export default function HostelDetails() {
   const viewOnly = params.viewOnly === "true";
 
   const { user, fullName, token, isAuthenticated, hostels, selectedHostelId } = useAppSelector((state) => state.auth);
+  
+  // Get room state from Redux
+  const {
+    allRooms,
+    allRoomsLoading,
+    allRoomsError,
+    summary: roomSummaryFromRedux,
+    sharingTypeAvailability
+  } = useAppSelector((state) => state.rooms);
 
   // Use the selectedHostelId from Redux OR the hostelId from params
   const effectiveHostelId = selectedHostelId || hostelIdFromParams;
@@ -271,16 +330,81 @@ export default function HostelDetails() {
   // Check if selected hostel is approved
   const isSelectedHostelApproved = selectedHostel?.status === "approved";
 
-  // Check if we're in view-only mode (for non-approved hostels)
+  // Check if we're in view-only mode
   const isViewOnlyMode = viewOnly || !isSelectedHostelApproved;
 
-  const {
-    allRooms,
-    allRoomsLoading,
-    allRoomsError,
-    summary,
-    sharingTypeAvailability
-  } = useAppSelector((state) => state.rooms);
+  // Main useEffect for data fetching
+  useEffect(() => {
+    if (!effectiveHostelId) {
+      console.log('⏭️ Skipping data fetch: No hostel selected');
+      return;
+    }
+
+    const hostelChanged = previousHostelIdRef.current !== effectiveHostelId;
+    
+    if (hostelChanged) {
+      setRoomSummary(null);
+      previousHostelIdRef.current = effectiveHostelId;
+    }
+
+    console.log(`🚀 Fetching data for hostel: ${effectiveHostelId}, changed: ${hostelChanged}`);
+    
+    if (!initialLoadRef.current) {
+      initialLoadRef.current = true;
+      console.log('📥 Initial load for HostelDetails');
+    }
+
+    // Fetch all data in sequence
+    const fetchAllData = async () => {
+      try {
+        console.log('🔄 Starting data fetch sequence...');
+        
+        // 1. Fetch rooms FIRST - this is critical
+        if (isSelectedHostelApproved) {
+          console.log(`📋 Fetching rooms for approved hostel: ${effectiveHostelId}`);
+          await dispatch(getAllRooms(effectiveHostelId)).unwrap();
+        } else {
+          console.log(`⏭️ Skipping rooms fetch: Hostel not approved (status: ${selectedHostel?.status})`);
+        }
+        
+        // 2. Fetch room summary from API
+        await fetchRoomSummary();
+        
+        // 3. Fetch other data in parallel
+        await Promise.all([
+          fetchPricingData(),
+          fetchBankDetails(),
+          fetchLocationData(),
+          fetchFacilitiesData(),
+          fetchHostelPhotos()
+        ]);
+        
+        // 4. Fetch user profile data
+        await Promise.all([
+          fetchUserProfile(),
+          isAuthenticated && fetchProfileImage()
+        ]);
+        
+        console.log('✅ All data fetched successfully');
+      } catch (error) {
+        console.error('❌ Error fetching data:', error);
+      }
+    };
+
+    fetchAllData();
+
+    return () => {
+      console.log('🧹 Cleaning up HostelDetails');
+    };
+  }, [dispatch, effectiveHostelId, isAuthenticated, isSelectedHostelApproved]);
+
+  // Sync room summary from Redux when rooms are loaded
+  useEffect(() => {
+    if (roomSummaryFromRedux && effectiveHostelId) {
+      console.log('🔄 Syncing room summary from Redux:', roomSummaryFromRedux);
+      setRoomSummary(roomSummaryFromRedux);
+    }
+  }, [roomSummaryFromRedux, effectiveHostelId]);
 
   // Fetch location data from API
   const fetchLocationData = async () => {
@@ -294,14 +418,11 @@ export default function HostelDetails() {
       setLocationLoading(true);
       setLocationError(null);
 
-      console.log(`Fetching location for hostel: ${effectiveHostelId}`);
+      console.log(`📍 Fetching location for hostel: ${effectiveHostelId}`);
 
-      // Make API call with hostelId query parameter
       const response = await ApiClient.get<LocationResponse>(
         `/hostel-operations/location?hostelId=${effectiveHostelId}`
       );
-
-      console.log("Location API Response:", response);
 
       if (response.success && response.data && response.data.location) {
         const loc = response.data.location;
@@ -315,7 +436,7 @@ export default function HostelDetails() {
           landmark: loc.landmark,
           country: loc.country
         });
-        console.log(`Location data loaded for hostel: ${response.data.hostelName}`);
+        console.log(`📍 Location data loaded for hostel: ${response.data.hostelName}`);
       } else {
         setLocationError("No location data available");
         setLocationData(null);
@@ -338,71 +459,7 @@ export default function HostelDetails() {
     }
   };
 
-  // Set location via API
-  const setLocation = async (location: Omit<LocationData, 'country'>) => {
-    if (!effectiveHostelId || !token) {
-      Alert.alert("Error", "Please select a hostel first");
-      return false;
-    }
-
-    try {
-      setLocationLoading(true);
-
-      const payload = {
-        hostelId: effectiveHostelId,
-        latitude: location.latitude,
-        longitude: location.longitude,
-        formattedAddress: location.formattedAddress,
-        city: location.city,
-        state: location.state,
-        pincode: location.pincode,
-        landmark: location.landmark
-      };
-
-      console.log("Setting location with payload:", payload);
-
-      const response = await ApiClient.post<LocationResponse>(
-        "/hostel-operations/set-location",
-        payload
-      );
-
-      console.log("Set location response:", response);
-
-      if (response.success && response.data) {
-        const loc = response.data.location;
-        setLocationData({
-          latitude: loc.coordinates.latitude,
-          longitude: loc.coordinates.longitude,
-          formattedAddress: loc.formattedAddress,
-          city: loc.city,
-          state: loc.state,
-          pincode: loc.pincode,
-          landmark: loc.landmark,
-          country: loc.country
-        });
-
-        Alert.alert("Success", "Location saved successfully!");
-        return true;
-      } else {
-        Alert.alert("Error", response.message || "Failed to save location");
-        return false;
-      }
-    } catch (error: any) {
-      console.error("Failed to set location:", error);
-
-      let errorMessage = "Failed to save location";
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      }
-
-      Alert.alert("Error", errorMessage);
-      return false;
-    } finally {
-      setLocationLoading(false);
-    }
-  };
-
-  // NEW: Fetch room summary from API
+  // Fetch room summary from API
   const fetchRoomSummary = async () => {
     if (!effectiveHostelId || !token) {
       console.log("Skipping room summary fetch - no hostel selected or no token");
@@ -414,18 +471,15 @@ export default function HostelDetails() {
       setRoomSummaryLoading(true);
       setRoomSummaryError(null);
 
-      console.log(`Fetching room summary for hostel: ${effectiveHostelId}`);
+      console.log(`📊 Fetching room summary for hostel: ${effectiveHostelId}`);
 
-      // Make API call with hostelId query parameter
       const response = await ApiClient.get<RoomApiResponse>(
         `/hostel-operations/rooms?hostelId=${effectiveHostelId}`
       );
 
-      console.log("Room Summary API Response:", response);
-
       if (response.success && response.data && response.data.summary) {
         setRoomSummary(response.data.summary);
-        console.log(`Room summary loaded:`, response.data.summary);
+        console.log(`📊 Room summary loaded:`, response.data.summary);
       } else {
         setRoomSummaryError("No room data available");
         setRoomSummary(null);
@@ -433,16 +487,12 @@ export default function HostelDetails() {
     } catch (error: any) {
       console.error("Failed to fetch room summary:", error);
 
-      // Handle different types of errors
       if (error.response) {
-        // Server responded with error status
         const errorMessage = error.response.data?.message || error.response.statusText;
         setRoomSummaryError(`Server error: ${errorMessage}`);
       } else if (error.request) {
-        // Request was made but no response
         setRoomSummaryError("Network error: Please check your connection");
       } else {
-        // Something else happened
         setRoomSummaryError(error.message || "Failed to load room data");
       }
 
@@ -452,31 +502,7 @@ export default function HostelDetails() {
     }
   };
 
-  // Initial data loading
-  useEffect(() => {
-    if (effectiveHostelId) {
-      loadInitialData();
-    }
-  }, [dispatch, isAuthenticated, effectiveHostelId]);
-
-  const { facilities: facilitiesFromRedux, facilitiesLoading: facilitiesLoadingFromRedux } = useAppSelector(state => state.rooms);
-  const { photos: photosFromRedux, photosLoading: photosLoadingFromRedux } = useAppSelector(state => state.rooms);
-
-  useEffect(() => {
-    if (effectiveHostelId) {
-      dispatch(getHostelPhotos());
-      dispatch(getFacilities());
-      fetchUserProfile();
-      fetchProfileImage();
-      fetchLocationData(); // NEW: Fetch location data
-      fetchRoomSummary();
-      fetchFacilitiesData();
-      fetchHostelPhotos();
-      fetchBankDetails();
-    }
-  }, [effectiveHostelId]);
-
-  // Fetch facilities data - UPDATED to use correct API endpoint
+  // Fetch facilities data
   const fetchFacilitiesData = async () => {
     if (!effectiveHostelId || !token) {
       console.log("Skipping facilities fetch - no hostel selected or no token");
@@ -486,14 +512,11 @@ export default function HostelDetails() {
     try {
       setFacilitiesLoading(true);
 
-      // Use the correct API endpoint from your API documentation
       console.log(`📥 Fetching facilities for hostel: ${effectiveHostelId}`);
 
       const response = await ApiClient.get<FacilitiesResponse>(
         `/hostel-operations/facilities/${effectiveHostelId}`
       );
-
-      console.log("📦 Facilities API Response:", JSON.stringify(response, null, 2));
 
       if (response.success && response.data) {
         setFacilitiesData(response.data);
@@ -502,8 +525,7 @@ export default function HostelDetails() {
           sharingTypes: response.data.sharingTypes,
           bathroomTypes: response.data.bathroomTypes,
           essentials: response.data.essentials,
-          foodServices: response.data.foodServices,
-          customFoodMenu: response.data.customFoodMenu
+          foodServices: response.data.foodServices
         });
       } else {
         console.log("⚠️ No facilities data available for this hostel");
@@ -537,7 +559,7 @@ export default function HostelDetails() {
 
       if (response.success && response.data) {
         setHostelPhotos(response.data.photos || response.data);
-        console.log("Hostel photos loaded:", response.data);
+        console.log("📸 Hostel photos loaded:", response.data);
       } else {
         console.log("No photos data available");
         setHostelPhotos([]);
@@ -568,7 +590,6 @@ export default function HostelDetails() {
         console.log("Profile image fetched successfully:", response.data.profileImage.url);
         setProfileImageUrl(response.data.profileImage.url);
 
-        // Also update user profile if needed
         if (response.data.user) {
           setUserProfile({
             name: response.data.user.fullName || user?.fullName || "Hostel Owner",
@@ -591,26 +612,6 @@ export default function HostelDetails() {
     }
   };
 
-  // Load all initial data
-  const loadInitialData = () => {
-    if (!effectiveHostelId) {
-      console.log("Skipping data load - no hostel selected");
-      return;
-    }
-
-    dispatch(getAllRooms());
-    fetchPricingData();
-    fetchBankDetails();
-    fetchUserProfile();
-    fetchLocationData(); // NEW: Fetch location
-    fetchRoomSummary();
-    fetchFacilitiesData();
-    fetchHostelPhotos();
-    if (isAuthenticated) {
-      fetchProfileImage();
-    }
-  };
-
   // Fetch user profile data
   const fetchUserProfile = async () => {
     if (!effectiveHostelId) {
@@ -618,7 +619,6 @@ export default function HostelDetails() {
     }
 
     try {
-      // Try to fetch from API first
       const response = await ApiClient.get<{ success: boolean; data: UserProfile }>(
         "/hostel-owner/profile"
       );
@@ -626,7 +626,6 @@ export default function HostelDetails() {
       if (response.success && response.data) {
         setUserProfile(response.data);
       } else {
-        // Fallback to auth data
         setUserProfile({
           name: user?.fullName || "Hostel Owner",
           email: user?.email,
@@ -636,7 +635,6 @@ export default function HostelDetails() {
       }
     } catch (error) {
       console.error("Error fetching user profile:", error);
-      // Fallback to auth data
       setUserProfile({
         name: user?.fullName || "Hostel Owner",
         email: user?.email,
@@ -646,7 +644,7 @@ export default function HostelDetails() {
     }
   };
 
-  // Fetch pricing data from API based on selected hostel ID
+  // Fetch pricing data from API
   const fetchPricingData = async () => {
     if (!effectiveHostelId || !token) {
       console.log("Skipping pricing fetch - no hostel selected or no token");
@@ -658,18 +656,15 @@ export default function HostelDetails() {
       setPricingLoading(true);
       setPricingError(null);
 
-      console.log(`Fetching pricing for hostel: ${effectiveHostelId}`);
+      console.log(`💰 Fetching pricing for hostel: ${effectiveHostelId}`);
 
-      // Make API call with hostelId query parameter
       const response = await ApiClient.get<PricingResponse>(
         `/hostel-operations/pricing?hostelId=${effectiveHostelId}`
       );
 
-      console.log("Pricing API Response:", response);
-
       if (response.success && response.data) {
         setPricingData(response.data);
-        console.log(`Pricing data loaded: ${response.data.length} sharing types`);
+        console.log(`💰 Pricing data loaded: ${response.data.length} sharing types`);
       } else {
         setPricingError("No pricing data available");
         setPricingData([]);
@@ -677,16 +672,12 @@ export default function HostelDetails() {
     } catch (error: any) {
       console.error("Failed to fetch pricing data:", error);
 
-      // Handle different types of errors
       if (error.response) {
-        // Server responded with error status
         const errorMessage = error.response.data?.message || error.response.statusText;
         setPricingError(`Server error: ${errorMessage}`);
       } else if (error.request) {
-        // Request was made but no response
         setPricingError("Network error: Please check your connection");
       } else {
-        // Something else happened
         setPricingError(error.message || "Failed to load pricing data");
       }
 
@@ -696,87 +687,97 @@ export default function HostelDetails() {
     }
   };
 
-  // Fetch bank details from API - UPDATED to show real scenario
-  // Replace the fetchBankDetails function with this improved version
+  // Fetch bank details from API - UPDATED implementation
   const fetchBankDetails = async () => {
     if (!effectiveHostelId || !token) {
       console.log("Skipping bank details fetch - no hostel selected or no token");
       setBankDetails(null);
+      setBankDetailsError("Please select a hostel and login");
       return;
     }
 
     try {
       setBankDetailsLoading(true);
-      console.log(`🏦 Fetching REAL bank details for hostel: ${effectiveHostelId}`);
+      setBankDetailsError(null);
+      console.log(`🏦 Fetching bank details for hostel: ${effectiveHostelId}`);
 
-      // Make direct API call with proper headers
       const response = await ApiClient.get<BankDetailsResponse>(
         `/bank/hostel/${effectiveHostelId}/details`
       );
 
-      console.log("🏦 REAL API Response received:", {
+      console.log("🏦 Bank API Response:", {
         success: response.success,
         hasData: !!response.data,
-        hasBankDetails: !!response.data?.bankDetails,
-        rawResponse: JSON.stringify(response, null, 2)
+        hostelId: response.data?.hostelId,
+        hostelName: response.data?.hostelName
       });
 
-      if (response.success && response.data?.bankDetails) {
+      if (response.success && response.data && response.data.bankDetails) {
         const bankData = response.data.bankDetails;
-
-        console.log("✅ Parsed bank data from API:", {
-          bankName: bankData.bankName,
-          accountHolder: bankData.accountHolderName,
-          accountNumber: bankData.accountNumber ? maskAccountNumber(bankData.accountNumber) : "Not provided",
-          ifscCode: bankData.ifscCode,
-          branchName: bankData.branchName,
-          isVerified: bankData.isVerified,
-          upiId: bankData.upiId
-        });
-
-        // Use EXACT data from API response
         const bankDetailsObject: BankDetails = {
-          bankName: bankData.bankName || "",
+          accountHolderName: bankData.accountHolderName || "",
           accountNumber: bankData.accountNumber || "",
           ifscCode: bankData.ifscCode || "",
-          accountHolderName: bankData.accountHolderName || "",
+          bankName: bankData.bankName || "",
           branchName: bankData.branchName || "",
-          isVerified: bankData.isVerified || false
+          upiId: bankData.upiId || "",
+          isVerified: bankData.isVerified || false,
+          setAt: bankData.setAt || ""
         };
 
         setBankDetails(bankDetailsObject);
+        console.log("✅ Bank details loaded:", {
+          bankName: bankDetailsObject.bankName,
+          accountHolder: bankDetailsObject.accountHolderName,
+          isVerified: bankDetailsObject.isVerified
+        });
       } else {
-        console.log("⚠️ API returned no bank details or error:", response);
+        console.log("⚠️ No bank details available for this hostel");
         setBankDetails(null);
+        setBankDetailsError("No bank details added yet");
       }
     } catch (error: any) {
-      console.error("❌ REAL API call failed:", {
+      console.error("❌ Bank API call failed:", {
         error: error.message,
         status: error.response?.status,
-        responseData: error.response?.data,
-        fullError: JSON.stringify(error, null, 2)
+        responseData: error.response?.data
       });
 
-      // Show error in UI for debugging
-      Alert.alert(
-        "Bank Details API Error",
-        `Failed to fetch bank details: ${error.message}\n\nCheck console for details.`,
-        [{ text: "OK" }]
-      );
+      let errorMessage = "Failed to load bank details";
+      
+      if (error.response?.status === 404) {
+        errorMessage = "No bank details found for this hostel";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message?.includes("Network Error")) {
+        errorMessage = "Network error. Please check your connection";
+      } else if (error.message?.includes("timeout")) {
+        errorMessage = "Request timeout. Please try again";
+      }
 
+      setBankDetailsError(errorMessage);
       setBankDetails(null);
     } finally {
       setBankDetailsLoading(false);
     }
   };
+
   // Handle hostel selection
   const handleSelectHostel = (hostelId: string) => {
     const hostel = hostels.find(h => h.hostelId === hostelId);
     if (hostel) {
       dispatch(selectHostel(hostelId));
       setShowHostelDropdown(false);
-      // Refresh data for new hostel
-      loadInitialData();
+      
+      // Reset initial load flag to force data fetch
+      initialLoadRef.current = false;
+      previousHostelIdRef.current = null;
+      
+      // Reset bank details when hostel changes
+      setBankDetails(null);
+      setBankDetailsError(null);
+      
+      console.log(`🏨 Hostel selected: ${hostelId}`);
     } else {
       Alert.alert(
         "Hostel Not Found",
@@ -796,39 +797,44 @@ export default function HostelDetails() {
     setRefreshing(true);
 
     try {
-      // Refresh all data in parallel
+      console.log('🔄 Manual refresh triggered');
+      
+      // Force reset and fetch all data
+      initialLoadRef.current = false;
+      
+      // Fetch all data in sequence
+      if (isSelectedHostelApproved) {
+        await dispatch(getAllRooms(effectiveHostelId)).unwrap();
+      }
+      
       await Promise.all([
-        dispatch(getAllRooms()),
+        fetchRoomSummary(),
         fetchPricingData(),
         fetchBankDetails(),
-        dispatch(getHostelPhotos()),
-        dispatch(getFacilities()),
-        fetchUserProfile(),
-        fetchProfileImage(),
-        fetchLocationData(), // NEW: Refresh location
-        fetchRoomSummary(),
+        fetchLocationData(),
         fetchFacilitiesData(),
-        fetchHostelPhotos()
+        fetchHostelPhotos(),
+        fetchUserProfile(),
+        isAuthenticated && fetchProfileImage()
       ]);
+      
+      console.log('✅ Manual refresh completed');
     } catch (error) {
       console.error("Refresh error:", error);
     } finally {
       setRefreshing(false);
     }
-  }, [dispatch, isAuthenticated, effectiveHostelId]);
+  }, [dispatch, isAuthenticated, effectiveHostelId, isSelectedHostelApproved]);
 
   // Group pricing data by sharing type
   const groupPricingBySharingType = () => {
     const grouped: Record<string, { daily: number | null; monthly: number | null }> = {};
-
-    // Initialize with all sharing types from the API response
     const sharingTypes = ["single", "double", "triple", "four", "five", "six", "seven", "eight", "nine", "ten"];
 
     sharingTypes.forEach(type => {
       grouped[type] = { daily: null, monthly: null };
     });
 
-    // Fill with actual data from API response
     pricingData.forEach(item => {
       const type = item.sharingType;
       if (!grouped[type]) {
@@ -842,44 +848,37 @@ export default function HostelDetails() {
     return grouped;
   };
 
-  // Get facilities count and display text - FIXED VERSION
+  // Get facilities display text
   const getFacilitiesDisplayText = () => {
     if (!effectiveHostelId) return "Select a hostel";
     if (facilitiesLoading || refreshing) return "Loading facilities...";
 
     if (!facilitiesData) return "No facilities added";
 
-    // Combine all facilities from different categories
     const allFacilities: string[] = [];
 
-    // Add sharing types
     if (facilitiesData.sharingTypes && Array.isArray(facilitiesData.sharingTypes)) {
       allFacilities.push(...facilitiesData.sharingTypes.map(type => `${type}`));
     }
 
-    // Add bathroom types
     if (facilitiesData.bathroomTypes && Array.isArray(facilitiesData.bathroomTypes)) {
       allFacilities.push(...facilitiesData.bathroomTypes);
     }
 
-    // Add essentials
     if (facilitiesData.essentials && Array.isArray(facilitiesData.essentials)) {
       allFacilities.push(...facilitiesData.essentials);
     }
 
-    // Add food services
     if (facilitiesData.foodServices && Array.isArray(facilitiesData.foodServices)) {
       allFacilities.push(...facilitiesData.foodServices);
     }
 
     if (allFacilities.length === 0) return "No facilities added";
 
-    // For the specific hostel ID from your API documentation, show sample data
     if (effectiveHostelId === "HSTL_281D54_1_MJYAR2RN_6XHK4") {
       return "1 Sharing, 6 Sharing, 4 Sharing, Attached Bathroom, Free WiFi, Daily Cleaning, Washing Machine, Dining Hall, Vegetarian Meals, Breakfast, Non-vegetarian Meals, Lunch, Dinner, Tea/Coffee +7 more";
     }
 
-    // Show first 3-4 facilities and count of remaining
     const display = allFacilities.slice(0, 4).join(", ");
     const remaining = allFacilities.length - 4;
 
@@ -894,11 +893,6 @@ export default function HostelDetails() {
 
     if (hostelPhotos && hostelPhotos.length > 0) {
       return hostelPhotos.length;
-    }
-
-    // Fallback to Redux data
-    if (photosFromRedux && photosFromRedux.length > 0) {
-      return photosFromRedux.length;
     }
 
     return 0;
@@ -1024,7 +1018,6 @@ export default function HostelDetails() {
       return;
     }
 
-    // Navigate to Google Map screen
     try { recordRoute('/HostelDetails'); } catch (e) { }
     router.push({
       pathname: "/SetHostelLocation",
@@ -1034,6 +1027,212 @@ export default function HostelDetails() {
         existingLocation: locationData ? JSON.stringify(locationData) : null
       }
     });
+  };
+
+  // Render Bank Details Card - NEW IMPLEMENTATION
+  const renderBankDetailsCard = () => {
+    const handleBankDetailsPress = () => {
+      if (!effectiveHostelId) {
+        Alert.alert(
+          "Select Hostel",
+          "Please select a hostel first",
+          [{ text: "OK", style: "cancel" }]
+        );
+        return;
+      }
+
+      if (!isSelectedHostelApproved && !isViewOnlyMode) {
+        Alert.alert(
+          "Not Available",
+          "Bank details management is only available for approved hostels.",
+          [{ text: "OK", style: "cancel" }]
+        );
+        return;
+      }
+
+      try { recordRoute('/HostelDetails'); } catch (e) { }
+      router.push({
+        pathname: "/BankDetailsPage",
+        params: {
+          hostelId: effectiveHostelId,
+          hostelName: selectedHostel?.hostelName,
+          existingBankDetails: bankDetails ? JSON.stringify(bankDetails) : null
+        }
+      });
+    };
+
+    return (
+      <TouchableOpacity
+        style={[styles.bankDetailsCard, !effectiveHostelId && styles.cardDisabled]}
+        onPress={handleBankDetailsPress}
+        activeOpacity={!effectiveHostelId ? 1 : 0.8}
+      >
+        <View style={styles.bankCardHeader}>
+          <View style={[
+            styles.iconCircleBank,
+            !effectiveHostelId && { backgroundColor: "#f0f0f0" }
+          ]}>
+            <Icon name="bank" size={26} color={effectiveHostelId ? BANK_BLUE : "#ccc"} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.bankCardLabel, !effectiveHostelId && { color: "#999" }]}>
+              Bank Details
+            </Text>
+            {!effectiveHostelId ? (
+              <Text style={[styles.bankCardValue, { color: "#999" }]}>
+                Select a hostel
+              </Text>
+            ) : bankDetailsLoading || refreshing ? (
+              <ActivityIndicator size="small" color={BANK_BLUE} style={{ marginTop: 4 }} />
+            ) : bankDetailsError ? (
+              <View>
+                <Text style={[styles.bankCardValue, { color: ERROR_COLOR }]} numberOfLines={1}>
+                  {bankDetailsError}
+                </Text>
+                <Text style={styles.bankSubText}>
+                  Tap to add bank details
+                </Text>
+              </View>
+            ) : bankDetails ? (
+              <View>
+                <Text style={styles.bankCardValue} numberOfLines={1}>
+                  {bankDetails.accountHolderName || "No account holder name"}
+                </Text>
+                <View style={styles.bankDetailsRow}>
+                  <View style={styles.bankDetailItem}>
+                    <Icon name="bank-outline" size={12} color="#666" />
+                    <Text style={styles.bankDetailText} numberOfLines={1}>
+                      {bankDetails.bankName || "No bank name"}
+                    </Text>
+                  </View>
+                  <View style={styles.bankDetailItem}>
+                    <Icon name="credit-card" size={12} color="#666" />
+                    <Text style={styles.bankDetailText} numberOfLines={1}>
+                      {maskAccountNumber(bankDetails.accountNumber)}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.bankStatusRow}>
+                  <View style={[
+                    styles.verificationBadge,
+                    { backgroundColor: bankDetails.isVerified ? SUCCESS_COLOR + '20' : WARNING_COLOR + '20' }
+                  ]}>
+                    <Icon 
+                      // name={bankDetails.isVerified ? "check-circle" : "clock-outline"} 
+                      // size={10} 
+                      // color={bankDetails.isVerified ? SUCCESS_COLOR : WARNING_COLOR} 
+                    />
+                    <Text style={[
+                      styles.verificationText,
+                      // { color: bankDetails.isVerified ? SUCCESS_COLOR : WARNING_COLOR }
+                    ]}>
+                      {/* {bankDetails.isVerified ? "Verified" : ""} */}
+                    </Text>
+                  </View>
+                  {bankDetails.setAt && (
+                    <Text style={styles.setAtText}>
+                      Set on {formatDate(bankDetails.setAt)}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            ) : (
+              <View>
+                <Text style={styles.bankCardValue} numberOfLines={1}>
+                  No bank details added
+                </Text>
+                <Text style={styles.bankSubText}>
+                  Tap to add bank details for payments
+                </Text>
+              </View>
+            )}
+          </View>
+          <Icon
+            name={effectiveHostelId ? "chevron-right" : "lock"}
+            size={24}
+            color={effectiveHostelId ? "#BDBDBD" : "#ccc"}
+          />
+        </View>
+
+        {/* Expanded Bank Details when available */}
+        {bankDetails && effectiveHostelId && !bankDetailsLoading && (
+          <View style={styles.bankDetailsExpanded}>
+            <View style={styles.bankDetailsGrid}>
+              <View style={styles.bankDetailColumn}>
+                <Text style={styles.bankDetailLabel}>Account Holder</Text>
+                <Text style={styles.bankDetailValue} numberOfLines={1}>
+                  {bankDetails.accountHolderName}
+                </Text>
+              </View>
+              <View style={styles.bankDetailColumn}>
+                <Text style={styles.bankDetailLabel}>Account Number</Text>
+                <Text style={styles.bankDetailValue}>
+                  {maskAccountNumber(bankDetails.accountNumber)}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.bankDetailsGrid}>
+              <View style={styles.bankDetailColumn}>
+                <Text style={styles.bankDetailLabel}>Bank Name</Text>
+                <Text style={styles.bankDetailValue} numberOfLines={1}>
+                  {bankDetails.bankName}
+                </Text>
+              </View>
+              <View style={styles.bankDetailColumn}>
+                <Text style={styles.bankDetailLabel}>IFSC Code</Text>
+                <Text style={styles.bankDetailValue}>
+                  {formatIfscCode(bankDetails.ifscCode)}
+                </Text>
+              </View>
+            </View>
+            {bankDetails.branchName && (
+              <View style={styles.bankDetailsGrid}>
+                <View style={styles.bankDetailColumn}>
+                  <Text style={styles.bankDetailLabel}>Branch</Text>
+                  <Text style={styles.bankDetailValue} numberOfLines={1}>
+                    {bankDetails.branchName}
+                  </Text>
+                </View>
+                {bankDetails.upiId && (
+                  <View style={styles.bankDetailColumn}>
+                    <Text style={styles.bankDetailLabel}>UPI ID</Text>
+                    <Text style={styles.bankDetailValue} numberOfLines={1}>
+                      {bankDetails.upiId}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+            <View style={styles.bankActionRow}>
+              <TouchableOpacity
+                style={styles.editBankButton}
+                onPress={handleBankDetailsPress}
+                activeOpacity={0.7}
+              >
+                <Icon name="pencil" size={16} color={BANK_BLUE} />
+                <Text style={styles.editBankText}>Edit Details</Text>
+              </TouchableOpacity>
+              {!bankDetails.isVerified && (
+                <TouchableOpacity
+                  style={styles.verifyButton}
+                  onPress={() => {
+                    Alert.alert(
+                      "Verification Pending",
+                      "Your bank details are pending verification. Our team will verify them within 24-48 hours. Please ensure all details are accurate.",
+                      [{ text: "OK", style: "default" }]
+                    );
+                  }}
+                  activeOpacity={0.7}
+                >
+                  {/* <Icon name="shield-check" size={16} color={WARNING_COLOR} /> */}
+                  {/* <Text style={styles.verifyText}>Verify Now</Text> */}
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+      </TouchableOpacity>
+    );
   };
 
   // Render location card
@@ -1229,10 +1428,10 @@ export default function HostelDetails() {
               <Text style={[styles.pricingTableHeaderText, { flex: 1, textAlign: 'right' }]}>Monthly (₹)</Text>
             </View>
 
-            {/* Table Rows - Only show types that have at least one price set */}
+            {/* Table Rows */}
             {Object.entries(pricingGroups)
               .filter(([type, prices]) => prices.daily !== null || prices.monthly !== null)
-              .slice(0, 6) // Show only first 6 types for better UX
+              .slice(0, 6)
               .map(([type, prices], index) => (
                 <View
                   key={type}
@@ -1253,7 +1452,7 @@ export default function HostelDetails() {
                 </View>
               ))}
 
-            {/* Show more indicator if there are more than 6 sharing types */}
+            {/* Show more indicator */}
             {Object.entries(pricingGroups).filter(([_, prices]) => prices.daily !== null || prices.monthly !== null).length > 6 && (
               <View style={styles.moreItemsIndicator}>
                 <Text style={styles.moreItemsText}>
@@ -1275,7 +1474,7 @@ export default function HostelDetails() {
     );
   };
 
-  // Render profile avatar with loading/error states
+  // Render profile avatar
   const renderProfileAvatar = () => {
     if (profileImageLoading) {
       return (
@@ -1298,7 +1497,6 @@ export default function HostelDetails() {
       );
     }
 
-    // Fallback to initials
     return (
       <View style={styles.profileIconWrap}>
         <View style={styles.profilePlaceholder}>
@@ -1548,7 +1746,7 @@ export default function HostelDetails() {
     </Modal>
   );
 
-  // Render rooms section - always show even when count is 0
+  // Render rooms section
   const renderRoomsSection = () => {
     if (!effectiveHostelId) {
       return (
@@ -1576,11 +1774,22 @@ export default function HostelDetails() {
             <ActivityIndicator size="small" color={FOREST_GREEN} />
             <Text style={styles.loadingText}>Loading rooms...</Text>
           </View>
+        ) : allRoomsError ? (
+          <View style={styles.errorContainer}>
+            <Icon name="alert-circle" size={40} color={ERROR_COLOR} />
+            <Text style={styles.errorText}>Failed to load rooms</Text>
+            <TouchableOpacity
+              style={styles.retryButtonSmall}
+              onPress={() => dispatch(getAllRooms(effectiveHostelId))}
+            >
+              <Text style={styles.retryButtonTextSmall}>Retry</Text>
+            </TouchableOpacity>
+          </View>
         ) : hasRooms ? (
           <>
             <FlatList
               data={displayRooms}
-              keyExtractor={(item, idx) => `${item.roomNumber}-${idx}`}
+              keyExtractor={(item, idx) => `${item._id}-${idx}`}
               horizontal
               showsHorizontalScrollIndicator={false}
               style={{ paddingVertical: 2 }}
@@ -1613,7 +1822,7 @@ export default function HostelDetails() {
                   </View>
                   <Text style={styles.roomInfo}>Floor {item.floor}</Text>
                   <Text style={styles.bedStats}>
-                    <Text style={{ color: FOREST_GREEN }}>{item.capacity - item.remaining}</Text> /{item.capacity} filled
+                    <Text style={{ color: FOREST_GREEN }}>{item.occupied}</Text> /{item.capacity} filled
                   </Text>
                   <Text style={styles.bedVacant}>
                     <Icon name="alert-circle-outline" size={16} color={VEGA_YELLOW} />{" "}
@@ -1713,9 +1922,9 @@ export default function HostelDetails() {
 
   // Render the stat cards with actual data
   const renderStatCards = () => {
-    const totalBeds = roomSummary?.totalBeds || 0;
-    const vacantBeds = roomSummary?.availableBeds || 0;
-    const occupiedBeds = roomSummary?.occupiedBeds || 0;
+    const totalBeds = roomSummary?.totalBeds || roomSummaryFromRedux?.totalBeds || 0;
+    const vacantBeds = roomSummary?.availableBeds || roomSummaryFromRedux?.vacantBeds || 0;
+    const occupiedBeds = roomSummary?.occupiedBeds || roomSummaryFromRedux?.occupiedBeds || 0;
 
     return (
       <View style={styles.statsRow}>
@@ -1725,7 +1934,7 @@ export default function HostelDetails() {
         >
           <Icon name="bed-double-outline" size={32} color={effectiveHostelId ? FOREST_GREEN : "#ccc"} />
           <Text style={[styles.statLabel, !effectiveHostelId && { color: "#999" }]}>Total Beds</Text>
-          {roomSummaryLoading && effectiveHostelId ? (
+          {(roomSummaryLoading || allRoomsLoading) && effectiveHostelId ? (
             <ActivityIndicator size="small" color={FOREST_GREEN} style={{ marginTop: 4 }} />
           ) : (
             <Text style={[styles.statValue, !effectiveHostelId && { color: "#999" }]}>
@@ -1741,7 +1950,7 @@ export default function HostelDetails() {
           <Text style={[styles.statLabel, !effectiveHostelId && { color: "#999" }, effectiveHostelId && { color: VEGA_YELLOW }]}>
             Vacant Beds
           </Text>
-          {roomSummaryLoading && effectiveHostelId ? (
+          {(roomSummaryLoading || allRoomsLoading) && effectiveHostelId ? (
             <ActivityIndicator size="small" color={VEGA_YELLOW} style={{ marginTop: 4 }} />
           ) : (
             <Text style={[
@@ -1843,7 +2052,7 @@ export default function HostelDetails() {
         refreshControl={refreshControl}
         showsVerticalScrollIndicator={true}
       >
-        {/* Stat Cards - Updated with real data */}
+        {/* Stat Cards */}
         {renderStatCards()}
 
         {/* Upcoming Bookings Card */}
@@ -1912,7 +2121,7 @@ export default function HostelDetails() {
         {/* Pricing Card */}
         {renderPricingCard()}
 
-        {/* Facilities Card - FIXED: Now shows real facilities data */}
+        {/* Facilities Card */}
         <TouchableOpacity
           style={[styles.infoCard, !effectiveHostelId && styles.cardDisabled]}
           onPress={() => handleCardPress("/Facilities", "Facilities")}
@@ -1939,7 +2148,6 @@ export default function HostelDetails() {
                 <Text style={styles.cardValue} numberOfLines={2}>
                   {getFacilitiesDisplayText()}
                 </Text>
-                {/* Show specific hostel data for demo */}
                 {effectiveHostelId === "HSTL_281D54_1_MJYAR2RN_6XHK4" && (
                   <Text style={styles.facilitiesSubText}>
                     3 Sharing Types • 1 Bathroom • 4 Essentials • 6 Food Services
@@ -1947,9 +2155,9 @@ export default function HostelDetails() {
                 )}
                 {facilitiesData && effectiveHostelId !== "HSTL_281D54_1_MJYAR2RN_6XHK4" && (
                   <Text style={styles.facilitiesSubText}>
-                    {facilitiesData.sharingTypes?.length || 0} Sharing Types •
-                    {facilitiesData.bathroomTypes?.length || 0} Bathroom •
-                    {facilitiesData.essentials?.length || 0} Essentials •
+                    {facilitiesData.sharingTypes?.length || 0} Sharing Types • 
+                    {facilitiesData.bathroomTypes?.length || 0} Bathroom • 
+                    {facilitiesData.essentials?.length || 0} Essentials • 
                     {facilitiesData.foodServices?.length || 0} Food Services
                   </Text>
                 )}
@@ -1990,76 +2198,12 @@ export default function HostelDetails() {
           />
         </TouchableOpacity>
 
-        {/* Bank Details Card - FIXED: Now shows real bank details */}
-        <TouchableOpacity
-          style={[styles.infoCard, !effectiveHostelId && styles.cardDisabled]}
-          onPress={() => handleCardPress("/BankDetailsPage", "Bank Details")}
-          activeOpacity={!effectiveHostelId ? 1 : 0.8}
-        >
-          <View style={[
-            styles.iconCircleBank,
-            !effectiveHostelId && { backgroundColor: "#f0f0f0" }
-          ]}>
-            <Icon name="bank" size={26} color={effectiveHostelId ? "#2C3E50" : "#ccc"} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.cardLabel, !effectiveHostelId && { color: "#999" }]}>
-              Bank Details
-            </Text>
-            {!effectiveHostelId ? (
-              <Text style={[styles.cardValue, { color: "#999" }]}>
-                Select a hostel
-              </Text>
-            ) : bankDetailsLoading ? (
-              <ActivityIndicator size="small" color={FOREST_GREEN} style={{ marginTop: 4 }} />
-            ) : bankDetails ? (
-              <View>
-                <Text style={styles.cardValue} numberOfLines={1}>
-                  {bankDetails.bankName} • {maskAccountNumber(bankDetails.accountNumber)}
-                </Text>
-                <Text style={styles.bankSubText}>
-                  {bankDetails.accountHolderName} • {bankDetails.ifscCode}
-                  {bankDetails.isVerified ? (
-                    <Text style={{ color: FOREST_GREEN, fontWeight: 'bold' }}> • Verified ✓</Text>
-                  ) : (
-                    <Text style={{ color: WARNING_COLOR, fontWeight: 'bold' }}> • Pending Verification</Text>
-                  )}
-                </Text>
-                {/* Show real scenario details */}
-                {effectiveHostelId === "HSTL_281D54_1_MJYAR2RN_6XHK4" && (
-                  <Text style={styles.bankAdditionalInfo}>
-                    UPI: gg@ybl • Branch: {bankDetails.branchName}
-                  </Text>
-                )}
-              </View>
-            ) : (
-              <View>
-                <Text style={styles.cardValue} numberOfLines={1}>
-                  No bank details added
-                </Text>
-                <Text style={styles.bankSubText}>
-                  Tap to add your bank account information
-                </Text>
-              </View>
-            )}
-          </View>
-          <Icon
-            name={effectiveHostelId ? "chevron-right" : "lock"}
-            size={24}
-            color={effectiveHostelId ? "#BDBDBD" : "#ccc"}
-          />
-        </TouchableOpacity>
+        {/* Bank Details Card - NEW IMPLEMENTATION */}
+        {renderBankDetailsCard()}
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-// Helper function to mask account number
-const maskAccountNumber = (accountNumber: string): string => {
-  if (!accountNumber || accountNumber.length <= 4) return accountNumber;
-  const lastFour = accountNumber.slice(-4);
-  return `••••${lastFour}`;
-};
 
 const styles = StyleSheet.create({
   wrapper: {
@@ -2545,19 +2689,158 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: "500",
   },
+  // Bank Details Card Styles
+  bankDetailsCard: {
+    marginHorizontal: 16,
+    marginBottom: 13,
+    marginTop: 3,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: "#fff",
+    shadowColor: "#DFF8F3",
+    shadowOpacity: 0.07,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: "#e7fbe1",
+  },
+  bankCardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  iconCircleBank: {
+    height: 38,
+    width: 38,
+    borderRadius: 19,
+    marginRight: 13,
+    backgroundColor: "#F0F5FF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bankCardLabel: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: BANK_BLUE,
+    marginBottom: 2,
+  },
+  bankCardValue: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: TEXT_DARK,
+  },
+  bankSubText: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 2,
+    fontWeight: "500",
+  },
+  bankDetailsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 4,
+    gap: 12,
+  },
+  bankDetailItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  bankDetailText: {
+    fontSize: 12,
+    color: "#666",
+  },
+  bankStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  verificationBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  verificationText: {
+    fontSize: 10,
+    fontWeight: "600",
+  },
+  setAtText: {
+    fontSize: 10,
+    color: "#999",
+    fontStyle: "italic",
+  },
+  // Expanded Bank Details
+  bankDetailsExpanded: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+  },
+  bankDetailsGrid: {
+    flexDirection: "row",
+    marginBottom: 12,
+    gap: 16,
+  },
+  bankDetailColumn: {
+    flex: 1,
+  },
+  bankDetailLabel: {
+    fontSize: 12,
+    color: "#666",
+    marginBottom: 2,
+    fontWeight: "500",
+  },
+  bankDetailValue: {
+    fontSize: 14,
+    color: TEXT_DARK,
+    fontWeight: "600",
+  },
+  bankActionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#eee",
+  },
+  editBankButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#F0F5FF",
+    borderRadius: 8,
+    gap: 6,
+  },
+  editBankText: {
+    fontSize: 14,
+    color: BANK_BLUE,
+    fontWeight: "600",
+  },
+  verifyButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#FFF3E0",
+    borderRadius: 8,
+    gap: 6,
+  },
+  verifyText: {
+    fontSize: 14,
+    color: WARNING_COLOR,
+    fontWeight: "600",
+  },
   // Facilities Card Additional Styles
   facilitiesSubText: {
     fontSize: 12,
     color: "#666",
     marginTop: 2,
     fontWeight: "500",
-  },
-  // Bank Details Additional Styles
-  bankAdditionalInfo: {
-    fontSize: 11,
-    color: "#666",
-    marginTop: 1,
-    fontWeight: "400",
   },
   // No Rooms Container
   noRoomsContainer: {
@@ -2666,15 +2949,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  iconCircleBank: {
-    height: 38,
-    width: 38,
-    borderRadius: 19,
-    marginRight: 13,
-    backgroundColor: "#F0F5FF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
   iconCircleGrey: {
     height: 38,
     width: 38,
@@ -2694,13 +2968,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "600",
     color: TEXT_DARK,
-  },
-  // Bank Details specific styles
-  bankSubText: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 2,
-    fontWeight: "500",
   },
   infoNote: {
     fontSize: 13,
@@ -2834,6 +3101,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+  retryButtonSmall: {
+    marginTop: 8,
+    backgroundColor: FOREST_GREEN,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  retryButtonTextSmall: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
   pricingEmptyContainer: {
     alignItems: "center",
     justifyContent: "center",
@@ -2856,5 +3135,20 @@ const styles = StyleSheet.create({
     color: TEXT_DARK,
     fontSize: 14,
     fontWeight: "600",
+  },
+  errorContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    backgroundColor: "#fff5f5",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#ffcdd2",
+  },
+  errorText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: ERROR_COLOR,
+    textAlign: "center",
   },
 });
