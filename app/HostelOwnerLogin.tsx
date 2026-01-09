@@ -133,17 +133,17 @@ export default function HostelOwnerLogin() {
   }, [forgotPasswordError, dispatch]);
 
   // Show toast for auth errors
-  useEffect(() => {
-    if (authError) {
-      Toast.show({
-        type: "error",
-        text1: "Login Error",
-        text2: authError,
-        position: "top",
-        visibilityTime: 5000,
-      });
-    }
-  }, [authError]);
+  // useEffect(() => {
+  //   if (authError) {
+  //     Toast.show({
+  //       type: "error",
+  //       text1: "Login Error",
+  //       text2: authError,
+  //       position: "top",
+  //       visibilityTime: 5000,
+  //     });
+  //   }
+  // }, [authError]);
 
   // Show success toast for OTP sent
   useEffect(() => {

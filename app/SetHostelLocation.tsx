@@ -51,7 +51,17 @@ export default function SetHostelLocation() {
   
   const hostelId = params.hostelId as string;
   const hostelName = params.hostelName as string;
-  const existingLocation = params.existingLocation ? JSON.parse(params.existingLocation as string) : null;
+  // Safely parse existingLocation which may be a stringified JSON, an object, or null
+  const rawExistingLocation = params.existingLocation as any;
+  let parsedExistingLocation: any = null;
+  if (rawExistingLocation) {
+    try {
+      parsedExistingLocation = typeof rawExistingLocation === "string" ? JSON.parse(rawExistingLocation) : rawExistingLocation;
+    } catch (e) {
+      console.warn("SetHostelLocation: failed to parse existingLocation param:", e);
+      parsedExistingLocation = null;
+    }
+  }
   
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -60,22 +70,22 @@ export default function SetHostelLocation() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   
-  const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(existingLocation);
-  const [address, setAddress] = useState<string>(existingLocation?.formattedAddress || "");
-  const [city, setCity] = useState<string>(existingLocation?.city || "");
-  const [state, setState] = useState<string>(existingLocation?.state || "");
-  const [pincode, setPincode] = useState<string>(existingLocation?.pincode || "");
-  const [landmark, setLandmark] = useState<string>(existingLocation?.landmark || "");
+  const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(parsedExistingLocation && typeof parsedExistingLocation.latitude === 'number' && typeof parsedExistingLocation.longitude === 'number' ? parsedExistingLocation : null);
+  const [address, setAddress] = useState<string>(parsedExistingLocation?.formattedAddress || "");
+  const [city, setCity] = useState<string>(parsedExistingLocation?.city || "");
+  const [state, setState] = useState<string>(parsedExistingLocation?.state || "");
+  const [pincode, setPincode] = useState<string>(parsedExistingLocation?.pincode || "");
+  const [landmark, setLandmark] = useState<string>(parsedExistingLocation?.landmark || "");
   
   const [region, setRegion] = useState<Region>({
-    latitude: existingLocation?.latitude || 17.385044,
-    longitude: existingLocation?.longitude || 78.486671,
+    latitude: parsedExistingLocation?.latitude || 17.385044,
+    longitude: parsedExistingLocation?.longitude || 78.486671,
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   });
   
   const mapRef = useRef<MapView>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<number | undefined>(undefined);
 
   // Initial setup
   useEffect(() => {
@@ -108,10 +118,10 @@ export default function SetHostelLocation() {
       let initialLat = 17.385044; // Hyderabad default
       let initialLng = 78.486671;
 
-      if (existingLocation) {
+      if (parsedExistingLocation && typeof parsedExistingLocation.latitude === 'number' && typeof parsedExistingLocation.longitude === 'number') {
         // Use existing location
-        initialLat = existingLocation.latitude;
-        initialLng = existingLocation.longitude;
+        initialLat = parsedExistingLocation.latitude;
+        initialLng = parsedExistingLocation.longitude;
       } else {
         // Get current location
         try {
@@ -136,7 +146,7 @@ export default function SetHostelLocation() {
       setRegion(newRegion);
       
       // If no existing location, reverse geocode current location
-      if (!existingLocation) {
+      if (!parsedExistingLocation) {
         await reverseGeocode(initialLat, initialLng);
       }
       
@@ -245,7 +255,7 @@ export default function SetHostelLocation() {
       const results = await Location.geocodeAsync(query);
       
       if (results.length > 0) {
-        const formattedResults = results.map((result, index) => ({
+        const formattedResults = (results as any).map((result: any, index: number) => ({
           id: index.toString(),
           name: `${result.street || result.name || "Location"} ${result.city ? `, ${result.city}` : ''}`,
           latitude: result.latitude,
@@ -538,7 +548,7 @@ export default function SetHostelLocation() {
                 rotateEnabled={true}
                 pitchEnabled={true}
               >
-                {selectedLocation && (
+                {selectedLocation && typeof selectedLocation.latitude === 'number' && typeof selectedLocation.longitude === 'number' && (
                   <Marker
                     coordinate={{
                       latitude: selectedLocation.latitude,
@@ -577,13 +587,13 @@ export default function SetHostelLocation() {
                   <View style={styles.coordinateItem}>
                     <Text style={styles.coordinateLabel}>Latitude</Text>
                     <Text style={styles.coordinateValue}>
-                      {selectedLocation.latitude.toFixed(6)}
+                      {selectedLocation?.latitude ? selectedLocation.latitude.toFixed(6) : "-"}
                     </Text>
                   </View>
                   <View style={styles.coordinateItem}>
                     <Text style={styles.coordinateLabel}>Longitude</Text>
                     <Text style={styles.coordinateValue}>
-                      {selectedLocation.longitude.toFixed(6)}
+                      {selectedLocation?.longitude ? selectedLocation.longitude.toFixed(6) : "-"}
                     </Text>
                   </View>
                 </View>
@@ -738,7 +748,7 @@ export default function SetHostelLocation() {
                     <>
                       <Icon name="check" size={20} color="#fff" />
                       <Text style={styles.saveButtonText}>
-                        {existingLocation ? "Update Location" : "Save Location"}
+                        {parsedExistingLocation ? "Update Location" : "Save Location"}
                       </Text>
                     </>
                   )}

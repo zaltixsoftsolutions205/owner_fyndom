@@ -542,7 +542,7 @@ const BankDetailsScreen = () => {
           />
 
           <InputField
-            label="UPI ID (Optional)"
+            label="UPI ID"
             value={upiId}
             onChangeText={(t) => { setUpiId(t.toLowerCase()); if (errors.upiId) setErrors({ ...errors, upiId: '' }); }}
             placeholder="Enter UPI ID"
