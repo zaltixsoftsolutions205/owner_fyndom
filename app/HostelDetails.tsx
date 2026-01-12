@@ -270,11 +270,11 @@ export default function HostelDetails() {
   const params = useLocalSearchParams();
   const dispatch = useAppDispatch();
   const [hostel] = useState(initialHostel);
-  
+
   // Refs to track initial load
   const initialLoadRef = useRef(false);
   const previousHostelIdRef = useRef<string | null>(null);
-  
+
   const [pricingData, setPricingData] = useState<PricingData[]>([]);
   const [pricingLoading, setPricingLoading] = useState(false);
   const [pricingError, setPricingError] = useState<string | null>(null);
@@ -308,7 +308,7 @@ export default function HostelDetails() {
   const viewOnly = params.viewOnly === "true";
 
   const { user, fullName, token, isAuthenticated, hostels, selectedHostelId } = useAppSelector((state) => state.auth);
-  
+
   // Get room state from Redux
   const {
     allRooms,
@@ -341,14 +341,14 @@ export default function HostelDetails() {
     }
 
     const hostelChanged = previousHostelIdRef.current !== effectiveHostelId;
-    
+
     if (hostelChanged) {
       setRoomSummary(null);
       previousHostelIdRef.current = effectiveHostelId;
     }
 
     console.log(`🚀 Fetching data for hostel: ${effectiveHostelId}, changed: ${hostelChanged}`);
-    
+
     if (!initialLoadRef.current) {
       initialLoadRef.current = true;
       console.log('📥 Initial load for HostelDetails');
@@ -358,7 +358,7 @@ export default function HostelDetails() {
     const fetchAllData = async () => {
       try {
         console.log('🔄 Starting data fetch sequence...');
-        
+
         // 1. Fetch rooms FIRST - this is critical
         if (isSelectedHostelApproved) {
           console.log(`📋 Fetching rooms for approved hostel: ${effectiveHostelId}`);
@@ -366,10 +366,10 @@ export default function HostelDetails() {
         } else {
           console.log(`⏭️ Skipping rooms fetch: Hostel not approved (status: ${selectedHostel?.status})`);
         }
-        
+
         // 2. Fetch room summary from API
         await fetchRoomSummary();
-        
+
         // 3. Fetch other data in parallel
         await Promise.all([
           fetchPricingData(),
@@ -378,13 +378,13 @@ export default function HostelDetails() {
           fetchFacilitiesData(),
           fetchHostelPhotos()
         ]);
-        
+
         // 4. Fetch user profile data
         await Promise.all([
           fetchUserProfile(),
           isAuthenticated && fetchProfileImage()
         ]);
-        
+
         console.log('✅ All data fetched successfully');
       } catch (error) {
         console.error('❌ Error fetching data:', error);
@@ -744,7 +744,7 @@ export default function HostelDetails() {
       });
 
       let errorMessage = "Failed to load bank details";
-      
+
       if (error.response?.status === 404) {
         errorMessage = "No bank details found for this hostel";
       } else if (error.response?.data?.message) {
@@ -768,15 +768,15 @@ export default function HostelDetails() {
     if (hostel) {
       dispatch(selectHostel(hostelId));
       setShowHostelDropdown(false);
-      
+
       // Reset initial load flag to force data fetch
       initialLoadRef.current = false;
       previousHostelIdRef.current = null;
-      
+
       // Reset bank details when hostel changes
       setBankDetails(null);
       setBankDetailsError(null);
-      
+
       console.log(`🏨 Hostel selected: ${hostelId}`);
     } else {
       Alert.alert(
@@ -798,15 +798,15 @@ export default function HostelDetails() {
 
     try {
       console.log('🔄 Manual refresh triggered');
-      
+
       // Force reset and fetch all data
       initialLoadRef.current = false;
-      
+
       // Fetch all data in sequence
       if (isSelectedHostelApproved) {
         await dispatch(getAllRooms(effectiveHostelId)).unwrap();
       }
-      
+
       await Promise.all([
         fetchRoomSummary(),
         fetchPricingData(),
@@ -817,7 +817,7 @@ export default function HostelDetails() {
         fetchUserProfile(),
         isAuthenticated && fetchProfileImage()
       ]);
-      
+
       console.log('✅ Manual refresh completed');
     } catch (error) {
       console.error("Refresh error:", error);
@@ -1117,10 +1117,10 @@ export default function HostelDetails() {
                     styles.verificationBadge,
                     { backgroundColor: bankDetails.isVerified ? SUCCESS_COLOR + '20' : WARNING_COLOR + '20' }
                   ]}>
-                    <Icon 
-                      // name={bankDetails.isVerified ? "check-circle" : "clock-outline"} 
-                      // size={10} 
-                      // color={bankDetails.isVerified ? SUCCESS_COLOR : WARNING_COLOR} 
+                    <Icon
+                    // name={bankDetails.isVerified ? "check-circle" : "clock-outline"} 
+                    // size={10} 
+                    // color={bankDetails.isVerified ? SUCCESS_COLOR : WARNING_COLOR} 
                     />
                     <Text style={[
                       styles.verificationText,
@@ -2155,9 +2155,9 @@ export default function HostelDetails() {
                 )}
                 {facilitiesData && effectiveHostelId !== "HSTL_281D54_1_MJYAR2RN_6XHK4" && (
                   <Text style={styles.facilitiesSubText}>
-                    {facilitiesData.sharingTypes?.length || 0} Sharing Types • 
-                    {facilitiesData.bathroomTypes?.length || 0} Bathroom • 
-                    {facilitiesData.essentials?.length || 0} Essentials • 
+                    {facilitiesData.sharingTypes?.length || 0} Sharing Types •
+                    {facilitiesData.bathroomTypes?.length || 0} Bathroom •
+                    {facilitiesData.essentials?.length || 0} Essentials •
                     {facilitiesData.foodServices?.length || 0} Food Services
                   </Text>
                 )}
