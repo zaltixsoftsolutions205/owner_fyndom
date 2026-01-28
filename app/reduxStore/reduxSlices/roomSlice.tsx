@@ -51,16 +51,14 @@ export const addRoom = createAsyncThunk(
   "rooms/addRoom",
   async (roomData: RoomData, { rejectWithValue }) => {
     try {
-      // Ensure hostelId is present
-      if (!roomData.hostelId) {
-        throw new Error("Hostel ID is required");
+      if (!roomData || !roomData.hostelId) {
+        return rejectWithValue("Invalid room data");
       }
 
-      const response = await roomApi.addRoom(roomData);
-      return response;
+      return await roomApi.addRoom(roomData);
     } catch (error: any) {
       return rejectWithValue(
-        error.response?.data?.message || error.message || "Failed to add room"
+        error.response?.data?.message || error.message
       );
     }
   }
@@ -164,23 +162,23 @@ const roomSlice = createSlice({
       .addCase(addRoom.fulfilled, (state, action) => {
         state.loading = false;
         state.success = true;
-        if (action.payload.data?.room) {
-          const roomData = action.payload.data.room;
-          const room: Room = {
-            _id: roomData._id,
-            floor: roomData.floor,
-            roomNumber: roomData.roomNumber,
-            sharingType: roomData.sharingType,
-            capacity: roomData.capacity,
-            occupied: roomData.occupied,
-            remaining: roomData.remaining,
-            isAvailable: roomData.isAvailable,
-            status: `${roomData.occupied}/${roomData.capacity} filled`,
-            hostelId: roomData.hostelId,
-          };
-          state.rooms.push(room);
-        }
+
+        const roomData = action.payload.data; // ✅ correct
+
+        state.rooms.push({
+          _id: roomData._id,
+          floor: roomData.floor,
+          roomNumber: roomData.roomNumber,
+          sharingType: roomData.sharingType,
+          capacity: roomData.capacity,
+          occupied: roomData.occupied,
+          remaining: roomData.remaining,
+          isAvailable: roomData.isAvailable,
+          status: `${roomData.occupied}/${roomData.capacity} filled`,
+          hostelId: roomData.hostelId,
+        });
       })
+
       .addCase(addRoom.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;

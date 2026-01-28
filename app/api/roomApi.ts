@@ -139,59 +139,25 @@ export interface UpdateOccupancyResponse {
 
 export const roomApi = {
   // Add a new room
-  addRoom: async (roomData: RoomData): Promise<RoomResponse> => {
-    console.log("🚀 Sending room data:", roomData);
-    try {
-      // Make sure hostelId is included
-      if (!roomData.hostelId) {
-        throw new Error("hostelId is required");
-      }
-      
-      const response = await ApiClient.post<RoomResponse>("/hostel-rooms/add", roomData);
-      console.log("✅ Room API response:", {
-        success: response.success,
-        roomNumber: response.data?.room?.roomNumber,
-        hostelName: response.data?.hostelInfo?.hostelName
-      });
-      return response;
-    } catch (error: any) {
-      console.error("❌ Room API error:", {
-        message: error.message,
-        data: error.response?.data,
-        status: error.response?.status
-      });
-      throw error;
+  addRoom: async (roomData: RoomData): Promise<any> => {
+    if (!roomData.hostelId) {
+      throw new Error("hostelId is required");
     }
+
+    return ApiClient.post(
+      "/hostel-operations/add-room",
+      roomData
+    );
   },
+
 
   // Get all rooms for a specific hostel
-  getRooms: async (hostelId: string): Promise<AllRoomsResponse> => {
-    try {
-      if (!hostelId) {
-        throw new Error("Hostel ID is required");
-      }
-
-      console.log(`📋 Fetching rooms for hostel: ${hostelId}`);
-      const response = await ApiClient.get<AllRoomsResponse>(`/hostel-rooms?hostelId=${hostelId}`);
-      
-      console.log("✅ Get all rooms API response:", {
-        success: response.success,
-        roomCount: response.data?.rooms?.length || 0,
-        hostelName: response.data?.hostelInfo?.hostelName,
-        summary: response.data?.summary
-      });
-      
-      return response;
-    } catch (error: any) {
-      console.error("❌ Get all rooms API error:", {
-        hostelId,
-        message: error.message,
-        status: error.response?.status,
-        response: error.response?.data
-      });
-      throw error;
-    }
+  getRooms: async (hostelId: string) => {
+    return ApiClient.get(
+      `/hostel-operations/rooms?hostelId=${hostelId}`
+    );
   },
+
 
   // Update room occupancy
   updateRoomOccupancy: async (roomId: string, occupied: number): Promise<UpdateOccupancyResponse> => {
@@ -202,17 +168,17 @@ export const roomApi = {
 
       console.log(`🔄 Updating occupancy for room: ${roomId} to ${occupied}`);
       const response = await ApiClient.patch<UpdateOccupancyResponse>(
-        `/hostel-rooms/${roomId}/occupancy`, 
+        `/hostel-rooms/${roomId}/occupancy`,
         { occupied }
       );
-      
+
       console.log("✅ Update occupancy API response:", {
         success: response.success,
         roomNumber: response.data?.room?.roomNumber,
         updatedOccupancy: response.data?.updatedOccupancy,
         remainingBeds: response.data?.remainingBeds
       });
-      
+
       return response;
     } catch (error: any) {
       console.error("❌ Update occupancy API error:", {
@@ -234,13 +200,13 @@ export const roomApi = {
 
       console.log(`🗑️ Deleting room: ${roomId}`);
       const response = await ApiClient.delete<DeleteRoomResponse>(`/hostel-rooms/delete/${roomId}`);
-      
+
       console.log("✅ Delete room API response:", {
         success: response.success,
         deletedRoomId: response.data?.deletedRoomId,
         hostelId: response.data?.hostelId
       });
-      
+
       return response;
     } catch (error: any) {
       console.error("❌ Delete room API error:", {
@@ -262,12 +228,12 @@ export const roomApi = {
 
       console.log(`📸 Fetching hostel photos${hostelId ? ` for hostel: ${hostelId}` : ''}`);
       const response = await ApiClient.get<HostelPhotosResponse>(url);
-      
+
       console.log("✅ Get hostel photos API:", {
         success: response.success,
         photoCount: response.data?.length || 0
       });
-      
+
       return response;
     } catch (error: any) {
       console.error("❌ Get hostel photos API error:", {
@@ -289,7 +255,7 @@ export const roomApi = {
 
       console.log(`🏨 Fetching facilities${hostelId ? ` for hostel: ${hostelId}` : ''}`);
       const response = await ApiClient.get<FacilitiesResponse>(url);
-      
+
       console.log("✅ Get facilities API:", {
         success: response.success,
         sharingTypes: response.data?.roomSharingTypes?.length || 0,
@@ -297,7 +263,7 @@ export const roomApi = {
         essentials: response.data?.essentials?.length || 0,
         foodServices: response.data?.foodServices?.length || 0
       });
-      
+
       return response;
     } catch (error: any) {
       console.error("❌ Get facilities API error:", {
@@ -318,13 +284,13 @@ export const roomApi = {
 
       console.log(`🔍 Fetching room details for: ${roomId}`);
       const response = await ApiClient.get(`/hostel-rooms/${roomId}`);
-      
+
       console.log("✅ Get room by ID API response:", {
         success: response.success,
         roomNumber: response.data?.roomNumber,
         floor: response.data?.floor
       });
-      
+
       return response;
     } catch (error: any) {
       console.error("❌ Get room by ID API error:", {
@@ -345,12 +311,12 @@ export const roomApi = {
 
       console.log(`✏️ Updating room: ${roomId}`, roomData);
       const response = await ApiClient.put(`/hostel-rooms/${roomId}`, roomData);
-      
+
       console.log("✅ Update room API response:", {
         success: response.success,
         roomNumber: response.data?.roomNumber
       });
-      
+
       return response;
     } catch (error: any) {
       console.error("❌ Update room API error:", {
@@ -375,12 +341,12 @@ export const roomApi = {
 
       console.log(`🏢 Fetching rooms for hostel: ${hostelId}, floor: ${floor}`);
       const response = await ApiClient.get(`/hostel-rooms/floor?hostelId=${hostelId}&floor=${floor}`);
-      
+
       console.log("✅ Get rooms by floor API response:", {
         success: response.success,
         roomCount: response.data?.rooms?.length || 0
       });
-      
+
       return response;
     } catch (error: any) {
       console.error("❌ Get rooms by floor API error:", {
@@ -402,12 +368,12 @@ export const roomApi = {
 
       console.log(`📊 Fetching room statistics for hostel: ${hostelId}`);
       const response = await ApiClient.get(`/hostel-rooms/statistics?hostelId=${hostelId}`);
-      
+
       console.log("✅ Get room statistics API response:", {
         success: response.success,
         statistics: response.data
       });
-      
+
       return response;
     } catch (error: any) {
       console.error("❌ Get room statistics API error:", {
@@ -428,13 +394,13 @@ export const roomApi = {
 
       console.log(`🔍 Checking availability for room: ${roomId}`);
       const response = await ApiClient.get(`/hostel-rooms/${roomId}/availability`);
-      
+
       console.log("✅ Check room availability API response:", {
         success: response.success,
         isAvailable: response.data?.isAvailable,
         remainingBeds: response.data?.remainingBeds
       });
-      
+
       return response;
     } catch (error: any) {
       console.error("❌ Check room availability API error:", {
@@ -459,18 +425,18 @@ export const roomApi = {
       console.log(`🔄 Bulk updating occupancy for hostel: ${hostelId}`, {
         roomCount: occupancyData.length
       });
-      
+
       const response = await ApiClient.post(`/hostel-rooms/bulk/occupancy`, {
         hostelId,
         occupancyData
       });
-      
+
       console.log("✅ Bulk update occupancy API response:", {
         success: response.success,
         updatedCount: response.data?.updatedCount,
         failedCount: response.data?.failedCount
       });
-      
+
       return response;
     } catch (error: any) {
       console.error("❌ Bulk update occupancy API error:", {
@@ -490,17 +456,17 @@ export const roomApi = {
       }
 
       console.log(`📥 Exporting rooms data for hostel: ${hostelId} in ${format} format`);
-      
+
       const response = await ApiClient.get(`/hostel-rooms/export?hostelId=${hostelId}&format=${format}`, {
         responseType: 'blob' // Important for file downloads
       });
-      
+
       console.log("✅ Export rooms data API response:", {
         success: true,
         contentType: response.headers?.['content-type'],
         contentLength: response.headers?.['content-length']
       });
-      
+
       return response;
     } catch (error: any) {
       console.error("❌ Export rooms data API error:", {

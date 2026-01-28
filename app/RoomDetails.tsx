@@ -63,26 +63,26 @@ export default function RoomDetails() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const dispatch = useAppDispatch();
-  
-  const { 
-    loading, 
-    error, 
-    success, 
-    allRooms, 
-    allRoomsLoading, 
+
+  const {
+    loading,
+    error,
+    success,
+    allRooms,
+    allRoomsLoading,
     allRoomsError,
     summary,
     sharingTypeAvailability,
     deleteLoading,
     deleteError
   } = useAppSelector((state) => state.rooms);
-  
-  const { 
-    selectedHostelId, 
+
+  const {
+    selectedHostelId,
     hostels,
-    token 
+    token
   } = useAppSelector((state) => state.auth);
-  
+
   const [rooms, setRooms] = useState<Room[]>([
     { id: 1, floor: "", number: "", capacity: "", occupied: "0", sharing: "" },
   ]);
@@ -111,7 +111,7 @@ export default function RoomDetails() {
         setSelectedHostelStatus(currentHostel.status);
         setIsHostelRejected(currentHostel.status === "rejected");
         setIsHostelPending(currentHostel.status === "pending");
-        
+
         if (currentHostel.status === "rejected") {
           Toast.show({
             type: "error",
@@ -191,7 +191,7 @@ export default function RoomDetails() {
       });
       dispatch(clearRoomError());
     }
-    
+
     if (allRoomsError) {
       Toast.show({
         type: "error",
@@ -202,7 +202,7 @@ export default function RoomDetails() {
       });
       dispatch(clearRoomError());
     }
-    
+
     if (deleteError) {
       Toast.show({
         type: "error",
@@ -235,7 +235,7 @@ export default function RoomDetails() {
       });
       return;
     }
-    
+
     if (isHostelPending) {
       Toast.show({
         type: "info",
@@ -280,7 +280,7 @@ export default function RoomDetails() {
       });
       return;
     }
-    
+
     if (isHostelPending) {
       Toast.show({
         type: "info",
@@ -360,8 +360,8 @@ export default function RoomDetails() {
 
     // Check if room number already exists (excluding the room being edited)
     if (allRooms && allRooms.length > 0) {
-      const existingRoom = allRooms.find(r => 
-        r.roomNumber === room.number.trim() && 
+      const existingRoom = allRooms.find(r =>
+        r.roomNumber === room.number.trim() &&
         r._id !== room._id // Allow same room to update itself
       );
       if (existingRoom) {
@@ -423,10 +423,10 @@ export default function RoomDetails() {
           position: "bottom",
           visibilityTime: 3000,
         });
-        
+
         // Clear the saved room from form
         setRooms(prev => prev.filter(r => r.id !== id));
-        
+
         // Add a new empty room if this was the last one
         if (rooms.length === 1) {
           const newId = Math.max(...rooms.map(r => r.id)) + 1;
@@ -485,7 +485,7 @@ export default function RoomDetails() {
       });
       return;
     }
-    
+
     if (isHostelPending) {
       Toast.show({
         type: "info",
@@ -502,8 +502,8 @@ export default function RoomDetails() {
       `Are you sure you want to delete room ${roomNumber}?`,
       [
         { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
+        {
+          text: "Delete",
           style: "destructive",
           onPress: () => handleDeleteRoom(roomId)
         }
@@ -511,11 +511,14 @@ export default function RoomDetails() {
     );
   };
 
+
+
+
   const handleDeleteRoom = async (roomId: string) => {
     try {
       const result = await dispatch(deleteRoom(roomId)).unwrap();
       console.log("✅ Delete room successful:", result);
-      
+
       Toast.show({
         type: "success",
         text1: "Room Deleted",
@@ -523,7 +526,7 @@ export default function RoomDetails() {
         position: "bottom",
         visibilityTime: 3000,
       });
-      
+
       // Refresh rooms list
       if (hostelId && !isHostelRejected && !isHostelPending) {
         dispatch(getAllRooms(hostelId));
@@ -662,10 +665,10 @@ export default function RoomDetails() {
             </Text>
           </View>
         </View>
-        
+
         <FlatList
           data={allRooms}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item, index) => item._id ?? index.toString()}
           scrollEnabled={false}
           renderItem={({ item }) => (
             <View style={styles.existingRoomCard}>
@@ -694,7 +697,7 @@ export default function RoomDetails() {
                   </TouchableOpacity>
                 )}
               </View>
-              
+
               <View style={styles.roomDetailsRow}>
                 <View style={styles.detailItem}>
                   <Icon name="floor-plan" size={16} color="#666" />
@@ -728,7 +731,7 @@ export default function RoomDetails() {
     return (
       <>
         <Text style={styles.addRoomTitle}>Add New Room</Text>
-        
+
         {rooms.map((room, index) => {
           const capacityValue = parseInt(room.capacity || "0");
           const occupiedValue = parseInt(room.occupied || "0");

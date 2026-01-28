@@ -158,17 +158,21 @@ class ApiClient {
                 refreshToken,
               });
 
-              const { accessToken, refreshToken: newRefreshToken } = refreshResponse.data.tokens;
+              const newAccessToken = refreshResponse.data.data.tokens.accessToken;
+              const newRefreshToken = refreshResponse.data.data.tokens.refreshToken;
 
-              await AsyncStorage.multiSet([
-                ['token', accessToken],
-                ['refreshToken', newRefreshToken],
-              ]);
+              // ✅ STORE IMMEDIATELY (THIS IS FIX #3)
+              await AsyncStorage.setItem("token", newAccessToken);
+              await AsyncStorage.setItem("refreshToken", newRefreshToken);
 
-              this.failedRequests.forEach(({ resolve }) => resolve());
+
+              this.failedRequests.forEach(({ resolve, originalRequest }) => {
+                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+                resolve(this.axiosInstance(originalRequest));
+              });
               this.failedRequests = [];
 
-              originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+              originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
               return this.axiosInstance(originalRequest);
             }
           } catch (refreshError) {
@@ -235,11 +239,18 @@ class ApiClient {
 
   // Add these forgot password methods if not already present
   async sendForgotPasswordOTP(email: string): Promise<any> {
-    return this.post('/auth/forgot-password', { email });
+    return this.post('/auth/forgot-password', {
+      email,
+      role: 'hostelOwner'
+    });
   }
 
   async verifyForgotPasswordOTP(email: string, otp: string): Promise<any> {
-    return this.post('/auth/verify-otp', { email, otp });
+    return this.post('/auth/verify-otp', {
+      email,
+      otp,
+      role: 'hostelOwner'
+    });
   }
 
   async resetPasswordWithToken(data: {
@@ -247,7 +258,10 @@ class ApiClient {
     resetToken: string;
     newPassword: string;
   }): Promise<any> {
-    return this.post('/auth/reset-password', data);
+    return this.post('/auth/reset-password', {
+      ...data,
+      role: 'hostelOwner'
+    });
   }
 }
 
