@@ -1,7 +1,5 @@
 export const BASE_URL = "http://192.168.29.230:5000/api";
 
-// export const BASE_URL = "https://api.fyndom.in";
-
 // import Constants from "expo-constants";
 
 // export const BASE_URL =
